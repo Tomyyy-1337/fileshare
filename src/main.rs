@@ -3,15 +3,13 @@ use std::io::Read;
 use std::net::IpAddr;
 use std::path::Path;
 use std::process::Command;
-use warp::http::header::{self, CACHE_CONTROL, PRAGMA, EXPIRES};
 
 use iced::{keyboard, Size, Subscription, Task, Theme, window};
 use iced::theme::palette;
-use iced::widget::{self, button, column, combo_box, container, row, text, text_input};
+use iced::widget::{self, button, column, container, row, text, text_input};
 use local_ip_address::local_ip;
 use qrcode_generator::QrCodeEcc;
 use copypasta::{ClipboardContext, ClipboardProvider};
-use warp::reply::Response;
 use warp::Filter;
 use webbrowser;
 use rfd::FileDialog;
@@ -301,14 +299,17 @@ impl State {
             .align_x(iced::alignment::Horizontal::Center);
 
         // Main
-        let main = row![
-            left,
-            right
+        let mut main = row![
+            left
         ]
         .width(iced::Length::Fixed(1200.0))
         .height(iced::Length::Fill)
         .padding(5)
         .spacing(5);
+        
+        if self.server_handle.is_some() {
+            main = main.push(right);
+        }
 
         let main = container(main)
             .width(iced::Length::Fill)

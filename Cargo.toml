@@ -4,13 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-iced = {version = "0.13.1", features = ["tokio", "canvas", "image", "advanced"]}
+iced = {version = "0.13.1", features = ["tokio", "image", "advanced"]}
 ipconfig = "0.3.2"
-clap = { version = "4.1.8", features = ["derive"] }
-local-ip-address = "0.5.1"
-qrcode-generator = "4.1.7"
+local-ip-address = "0.6.3"
+qrcode-generator = "5.0.0"
 warp = "0.3.3"
 copypasta = "0.10.1"
-zip = "2.2.2"
 webbrowser = "1.0.3"
 rfd = "0.15.2"
