@@ -3,6 +3,7 @@ use std::io::Read;
 use std::net::IpAddr;
 use std::path::Path;
 use std::process::Command;
+use warp::http::header::{self, CACHE_CONTROL, PRAGMA, EXPIRES};
 
 use iced::{keyboard, Size, Subscription, Task, Theme, window};
 use iced::theme::palette;
@@ -10,6 +11,7 @@ use iced::widget::{self, button, column, combo_box, container, row, text, text_i
 use local_ip_address::local_ip;
 use qrcode_generator::QrCodeEcc;
 use copypasta::{ClipboardContext, ClipboardProvider};
+use warp::reply::Response;
 use warp::Filter;
 use webbrowser;
 use rfd::FileDialog;
@@ -358,7 +360,6 @@ async fn server(ip: IpAddr, port: u16, path: String) {
         .and_then( move || { 
             let path_clone = path.clone();
             async move {
-                // let path = String::from("./src/main.rs");
                 let file_name = Path::new(&path_clone).file_name().unwrap().to_str().unwrap();
                 let mut file = match File::open(&path_clone) {
                     Ok(file) => file,
@@ -369,7 +370,7 @@ async fn server(ip: IpAddr, port: u16, path: String) {
                 if let Err(_) = file.read_to_end(&mut buffer) {
                     return Err(warp::reject::not_found());
                 }
-                
+              
                 Ok(warp::reply::with_header(
                     buffer,
                     "Content-Disposition",
