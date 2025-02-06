@@ -1,4 +1,4 @@
-use iced::{theme::palette, widget::{self, button, column, container, row, text, text_input}, Theme};
+use iced::{theme::palette, widget::{self, button, column, container, row, scrollable, text, text_input}, Theme};
 use crate::{state::State, update::Message};
 
 pub fn view(state: &State) -> iced::Element<Message> {
@@ -29,75 +29,93 @@ pub fn view(state: &State) -> iced::Element<Message> {
     let browser_button = button("Download")
         .on_press(Message::OpenInBrowser);
     
-    let uploaded_files = text!("Uploaded Files:")
+    let upload_files = text!("Upload File:")
         .size(h1_size);
-
-    let text_current_file_header = text!("Current File:")
-        .size(h2_size);
 
     let url_select_button = button("Select File")
         .on_press(Message::SelectPath);
 
     // === Layout ===
     let mut left = column![
-        uploaded_files,
-        text_current_file_header
+        upload_files,
     ]
     .padding(5)
     .spacing(10)
-    .width(iced::Length::Fill)
-    .height(iced::Length::Fill);
+    .width(iced::Length::Fill);
 
-    match &state.file_path {
-        Some(path) => {
+   if !state.file_path.is_empty() {
+        let uploaded_files = text!("Shared Files:")
+            .size(h1_size);
+
+        let mut files_list = column![]
+            .spacing(10);
+
+        for (i, path) in state.file_path.iter().enumerate() {
+            let text_file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown");
+            let text_file_name = text(text_file_name)
+                .size(h2_size);
+
             let text_current_file = text_input("", path.to_str().unwrap())
                 .size(p_size)
                 .on_input(|_| Message::None);
-
-            let open_button = button("Open File")
-                .on_press(Message::OpenFile)
+                    
+            let open_button = button("Open")
+                .on_press(Message::OpenFile(i))
                 .width(iced::Length::FillPortion(1));
 
-            let show_in_explorer_button = button("Show in Explorer")
-                .on_press(Message::ShowInExplorer)
+            let show_in_explorer_button = button("Show")
+                .on_press(Message::ShowInExplorer(i))
+                .width(iced::Length::FillPortion(1));
+
+            let delete_button = button("Delete")
+                .on_press(Message::DeleteFile(i))
                 .width(iced::Length::FillPortion(1));
 
             let row = row![
-                show_in_explorer_button.width(iced::Length::FillPortion(1)),
-                open_button.width(iced::Length::FillPortion(1)),
+                open_button,
+                show_in_explorer_button,
+                delete_button
             ]
             .spacing(5);
-        
-            let text_stop_share = text!("Stop Sharing")
-                .size(h2_size);
             
-            let delete_button = button("Stop Server")
-                .on_press(Message::DeleteFile);
+            let col = column![
+                text_file_name,
+                text_current_file,
+                row
+            ]
+            .spacing(5);
 
-            let text_new_file = text!("Select new File:")
-                .size(h2_size);
+            files_list = files_list.push(col);
+        }
 
-            left = left.push(text_current_file);
-            // if file is image, show preview
-            left = left.push(row);
-            left = left.push(text_new_file);
-            left = left.push(url_select_button.width(iced::Length::Fill));
-            left = left.push(text_stop_share);
-            left = left.push(delete_button.width(iced::Length::Fill));
-        }
-        None => {
-            left = left.push(text!("No file selected!")
-                .size(p_size));
-            left = left.push(text!("Drag and drop a file inside the window or click the button below to select a file.")
-                .size(p_size));
-            left = left.push(url_select_button.width(iced::Length::Fill));
-        }
+        let files_list = scrollable(files_list)
+            .height(iced::Length::Fill);
+
+        let delete_all_button = button("Delete All")
+            .on_press(Message::DeleteAllFiles)
+            .width(iced::Length::FillPortion(1));
+        
+        let text_new_file = text!("Select new File:")
+            .size(h2_size);
+        
+        left = left.push(text_new_file);
+        left = left.push(url_select_button.width(iced::Length::Fill));
+        left = left.push(uploaded_files);
+        left = left.push(files_list);
+        left = left.push(delete_all_button);
+    } else {
+        left = left.push(text!("No file selected!")
+            .size(p_size));
+        left = left.push(text!("Drag and drop a file inside the window or click the button below to select a file.")
+            .size(p_size));
+        left = left.push(url_select_button.width(iced::Length::Fill));
+        
     }
 
     let left = container(left)
         .style(modify_style(0.8))
         .width(iced::Length::FillPortion(1))
-        .height(iced::Length::Fill)
+        .height(iced::Length::FillPortion(1))
         .padding(5);
     
     let url_buttons_row = row![
@@ -120,7 +138,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
     let right = container(right)
         .style(modify_style(0.8))
         .width(iced::Length::FillPortion(1))
-        .height(iced::Length::Fill)
+        .height(iced::Length::FillPortion(1))
         .padding(5);
 
     // footer

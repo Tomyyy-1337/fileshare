@@ -4,16 +4,88 @@ use tokio::fs::File;
 use tokio_util::io::ReaderStream;
 use warp::hyper::Body;
 
-pub async fn server(ip: IpAddr, port: u16, path: PathBuf) {
-    let download_route = warp::path("download").and_then(move || {
-        let path_clone = path.clone();
+pub async fn server(ip: IpAddr, port: u16, path: Vec<PathBuf>) {
+    let html_route = create_index_page(path.clone());
+    let css_route = create_css_route();
+    let download_route = create_route(path);
+
+    let routes = html_route.or(css_route).or(download_route);
+
+    warp::serve(routes)
+        .run((ip, port))
+        .await;
+}
+
+fn create_index_page(path: Vec<PathBuf>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    let links = path.iter().enumerate().map(|(i, path)| {
+        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown");
+        format!("<div class=\"row\"><p class=\"name\">{}</p><a class=\"link\" href=\"download/{}\">Download</a></div>", name, i)
+    }).collect::<Vec<String>>().join("<br>");
+
+    let script = 
+        "<script>
+            document.getElementById('downloadAll').addEventListener('click', function() {
+                const links = document.querySelectorAll('a.link');
+                links.forEach(link => {
+                    const url = link.href;
+                    const fileName = link.previousElementSibling.textContent;
+                    fetch(url)
+                        .then(response => response.blob())
+                        .then(blob => {
+                            const a = document.createElement('a');
+                            a.href = URL.createObjectURL(blob);
+                            a.download = fileName;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                        })
+                        .catch(console.error);
+                });
+            });
+        </script>";
+
+    let html_route = warp::path::path("index")
+        .map(move || {
+            let html = format!(r#"
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Download Page</title>
+                    <link rel="stylesheet" type="text/css" href="/static/style.css">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                </head>
+                <body>
+                    <h1>Download Files</h1>
+                    <div id = "allrow" class="row"><p class="name">Download all Files</p><button id="downloadAll">Download All Files</button></div><br>
+                    <h1>File List</h1>                    
+                    {}
+                    {script}
+                </body>
+                </html>
+                "#, links);
+
+            let response = warp::reply::html(html);
+            warp::reply::with_header(response, "Connection", "close")    
+        });
+    html_route
+}
+
+fn create_css_route() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path("static")
+        .and(warp::path("style.css"))
+        .and(warp::fs::file("./style.css"))
+}
+
+fn create_route(path: Vec<PathBuf>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    let download_route = warp::path!("download" / usize).and_then(move |index| {
+        let path: PathBuf = path.get(index).cloned().unwrap();
         async move {
-            let file_name = Path::new(&path_clone)
+            let file_name = Path::new(&path)
                 .file_name()
                 .and_then(|n| n.to_str())
                 .ok_or_else(|| warp::reject::not_found())?;
-            
-            let file = File::open(&path_clone).await.map_err(|_| warp::reject::not_found())?;
+        
+            let file = File::open(&path).await.map_err(|_| warp::reject::not_found())?;
             let stream = ReaderStream::new(file);
             let body = Body::wrap_stream(stream);
             let response = Response::new(body);
@@ -27,8 +99,6 @@ pub async fn server(ip: IpAddr, port: u16, path: PathBuf) {
             Ok::<_, warp::Rejection>(warp::reply::with_header(response, "Connection", "close"))
         }
     });
-
-    warp::serve(download_route)
-        .run((ip, port))
-        .await;
+    download_route
 }
+

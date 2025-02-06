@@ -8,10 +8,11 @@ iced = {version = "0.13.1", features = ["tokio", "image", "advanced"]}
 ipconfig = "0.3.2"
 local-ip-address = "0.6.3"
 qrcode-generator = "5.0.0"
-warp = "0.3.3"
+warp = { version = "0.3.7", default-features = false, features = ["multipart", "websocket", "tls", "compression", "compression-brotli", "compression-gzip"] }
 copypasta = "0.10.1"
 webbrowser = "1.0.3"
 rfd = "0.15.2"
 memmap2 = "0.9.5"
 tokio = { version = "1.43.0", features = ["full"] }
 tokio-util = "0.7.13"
+zip = "2.2.2"

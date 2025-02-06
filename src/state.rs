@@ -3,12 +3,11 @@ use local_ip_address::local_ip;
 use iced::widget;
 use qrcode_generator::QrCodeEcc;
 
-
 pub struct State {
     pub dark_mode: bool,
     pub ip_adress: Option<IpAddr>,
     pub port: u16,
-    pub file_path: Option<PathBuf>,
+    pub file_path: Vec<PathBuf>,
     pub qr_code: widget::image::Handle,
     pub server_handle: Option<iced::task::Handle>,
 }
@@ -21,7 +20,7 @@ impl Default for State {
             dark_mode: true,
             ip_adress: ip,
             port: 8080,
-            file_path: None,
+            file_path: Vec::new(),
             qr_code,
             server_handle: None,
         }
@@ -34,7 +33,7 @@ impl State {
     }
 
     fn url_string(ip: &IpAddr, port: u16) -> String {
-        format!("http://{}:{}/download", ip, port)
+        format!("http://{}:{}/index", ip, port)
     }
 
     fn create_qr_code(url: &String, size: usize) -> widget::image::Handle {

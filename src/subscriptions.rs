@@ -3,14 +3,13 @@ use crate::state::State;
 
 use crate::update::Message;
 
-
 pub fn subscription(state: &State) -> Subscription<Message> {
     let keyboard = keyboard_input(state);
     let window = window_events();
 
     Subscription::batch([
         keyboard, 
-        window
+        window,
     ])
 }
 
