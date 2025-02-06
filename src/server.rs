@@ -1,34 +1,32 @@
-use std::{fs::File, io::Read, net::IpAddr, path::{Path, PathBuf}};
-
-use warp::Filter;
+use std::{net::IpAddr, path::{Path, PathBuf}};
+use warp::{http::header, reply::Response, Filter};
+use tokio::fs::File;
+use tokio_util::io::ReaderStream;
+use warp::hyper::Body;
 
 pub async fn server(ip: IpAddr, port: u16, path: PathBuf) {
-    let download_route = warp::path("download")
-        .and_then( move || { 
-            let path_clone = path.clone();
-            async move {
-                let file_name = Path::new(&path_clone).file_name().unwrap().to_str().unwrap();
-                let mut file = match File::open(&path_clone) {
-                    Ok(file) => file,
-                    Err(_) => return Err(warp::reject::not_found()),
-                };
-                
-                let mut buffer = Vec::new();
-                if let Err(_) = file.read_to_end(&mut buffer) {
-                    return Err(warp::reject::not_found());
-                }
-              
-                Ok(warp::reply::with_header(
-                    warp::reply::with_header(
-                        buffer,
-                        "Content-Disposition",
-                        format!("attachment; filename=\"{}\"", file_name) 
-                    ),
-                    "Connection",
-                    "close"
-                ))
-            }
-        });
+    let download_route = warp::path("download").and_then(move || {
+        let path_clone = path.clone();
+        async move {
+            let file_name = Path::new(&path_clone)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .ok_or_else(|| warp::reject::not_found())?;
+            
+            let file = File::open(&path_clone).await.map_err(|_| warp::reject::not_found())?;
+            let stream = ReaderStream::new(file);
+            let body = Body::wrap_stream(stream);
+            let response = Response::new(body);
+
+            let response = warp::reply::with_header(
+                response,
+                header::CONTENT_DISPOSITION,
+                format!("attachment; filename=\"{}\"", file_name),
+            );
+
+            Ok::<_, warp::Rejection>(warp::reply::with_header(response, "Connection", "close"))
+        }
+    });
 
     warp::serve(download_route)
         .run((ip, port))
