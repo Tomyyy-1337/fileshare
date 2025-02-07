@@ -33,20 +33,6 @@ fn create_static_route() -> impl Filter<Extract = impl warp::Reply, Error = warp
         .and(warp::fs::dir("./static"))
 }
 
-fn html_template(path: Arc<Mutex<Vec<PathBuf>>>) -> String {
-    let tera = Tera::new("template/*.html").unwrap();
-    let mut context = Context::new();
-
-    let files: Vec<FileInfo> = path.lock().unwrap().iter().enumerate().map(|(i, path)| {
-        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
-        FileInfo { name, index: i }
-    }).collect();
-
-    context.insert("files", &files);
-
-    tera.render("index.html", &context).unwrap()
-}
-
 fn create_update_content_route(path: Arc<Mutex<Vec<PathBuf>>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path("update-content")
     .map(move || {
@@ -69,7 +55,17 @@ fn create_update_content_route(path: Arc<Mutex<Vec<PathBuf>>>) -> impl Filter<Ex
 fn create_index_route(path: Arc<Mutex<Vec<PathBuf>>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let html_route = warp::path::path("index")
         .map(move || {
-            let html = html_template(path.clone());
+            let tera = Tera::new("template/*.html").unwrap();
+            let mut context = Context::new();
+        
+            let files: Vec<FileInfo> = path.lock().unwrap().iter().enumerate().map(|(i, path)| {
+                let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
+                FileInfo { name, index: i }
+            }).collect();
+        
+            context.insert("files", &files);
+        
+            let html = tera.render("index.html", &context).unwrap();
 
             let response = warp::reply::html(html);
             warp::reply::with_header(response, "Connection", "close")    
