@@ -9,7 +9,7 @@ use tera::{Tera, Context};
 pub async fn server(ip: IpAddr, port: u16, path: Arc<Mutex<Vec<PathBuf>>>) {
     let html_route = create_index_page(path.clone());
     let static_route = create_static_route();
-    let download_route = create_route(path.clone());
+    let download_route = create_download_route(path.clone());
     let update_content_route = create_update_content_route(path);
 
     let routes = html_route
@@ -77,7 +77,7 @@ fn create_index_page(path: Arc<Mutex<Vec<PathBuf>>>) -> impl Filter<Extract = im
     html_route
 }
 
-fn create_route(path: Arc<Mutex<Vec<PathBuf>>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+fn create_download_route(path: Arc<Mutex<Vec<PathBuf>>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let download_route = warp::path!("download" / usize).and_then(move |index| {
         let path: PathBuf = path.lock().unwrap().get(index).cloned().unwrap();
         async move {
