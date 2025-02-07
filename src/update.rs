@@ -1,4 +1,4 @@
-use std::{path::PathBuf, process::Command, thread::sleep};
+use std::{path::PathBuf, process::Command};
 use copypasta::{ClipboardContext, ClipboardProvider};
 use rfd::FileDialog;
 use iced::Task;
@@ -28,7 +28,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         Message::FileDropped(path) => return add_path(state, path),
         Message::ServerStopped              => state.server_handle = None,
         Message::OpenInBrowser              => webbrowser::open(&state.create_url_string()).unwrap(),
-        Message::DeleteFile(indx)    => return delete_file(state, indx),        
+        Message::DeleteFile(indx)    => delete_file(state, indx),        
         Message::OpenFile(indx)      => open_in_explorer(state, indx),
         Message::ShowInExplorer(indx)=> show_in_explorer(state, indx),
         Message::SelectFilesExplorer        => return select_files(state),
@@ -62,15 +62,15 @@ fn select_folders(state: &mut State) -> Task<Message> {
 }
 
 fn add_selected_files(state: &mut State, paths: Vec<PathBuf>) -> Task<Message> {
-    let mut task = Task::none();
+    let mut tasks = Vec::new();
     for path in paths {
-        task = add_path(state, path);
+        tasks.push(add_path(state, path));
     }
-    task
+    Task::batch(tasks)
 }
 
 fn show_in_explorer(state: &mut State, indx: usize) {
-    if let Some(path) = &state.file_path.get(indx) {
+    if let Some(path) = &state.file_path.lock().unwrap().get(indx) {
         Command::new( "explorer" )
             .arg("/select,")
             .arg(path)
@@ -80,7 +80,7 @@ fn show_in_explorer(state: &mut State, indx: usize) {
 }
 
 fn open_in_explorer(state: &mut State, indx: usize) {
-    if let Some(path) = &state.file_path.get(indx) {
+    if let Some(path) = &state.file_path.lock().unwrap().get(indx) {
         Command::new( "explorer" )
             .arg(path)
             .spawn( )
@@ -89,7 +89,7 @@ fn open_in_explorer(state: &mut State, indx: usize) {
 }
 
 fn delete_all_files(state: &mut State) {
-    state.file_path.clear();
+    state.file_path.lock().unwrap().clear();
     stop_server(state);
 }
 
@@ -100,14 +100,11 @@ fn stop_server(state: &mut State) {
     }
 }
 
-fn delete_file(state: &mut State, indx: usize) -> Task<Message> {
-    state.file_path.remove(indx);
-    stop_server(state);
-    if !state.file_path.is_empty() {
-        sleep(std::time::Duration::from_millis(1));
-        return start_server(state);
+fn delete_file(state: &mut State, indx: usize) {
+    state.file_path.lock().unwrap().remove(indx);
+    if state.file_path.lock().unwrap().is_empty() {
+        stop_server(state);
     } 
-    Task::none()
 }
 
 fn find_files_recursive(path: &PathBuf, files: &mut Vec<PathBuf>) {
@@ -132,14 +129,14 @@ fn add_path(state: &mut State, path: PathBuf) -> Task<Message> {
 
     let mut task = Task::none();
     for file in paths {
-        if state.file_path.contains(&file) {
+        if state.file_path.lock().unwrap().contains(&file) {
             continue;
         }
-        stop_server(state);
-        state.file_path.push(file);
-        state.file_path.sort();
-        sleep(std::time::Duration::from_millis(1));
-        task = start_server(state);
+        state.file_path.lock().unwrap().push(file);
+        state.file_path.lock().unwrap().sort();
+        if state.server_handle.is_none() {
+            task = start_server(state);
+        }
     } 
 
     task

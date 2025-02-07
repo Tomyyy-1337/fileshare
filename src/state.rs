@@ -1,4 +1,4 @@
-use std::{net::IpAddr, path::PathBuf};
+use std::{net::IpAddr, path::PathBuf, sync::{Arc, Mutex}};
 use local_ip_address::local_ip;
 use iced::widget;
 use qrcode_generator::QrCodeEcc;
@@ -7,7 +7,7 @@ pub struct State {
     pub dark_mode: bool,
     pub ip_adress: Option<IpAddr>,
     pub port: u16,
-    pub file_path: Vec<PathBuf>,
+    pub file_path: Arc<Mutex<Vec<PathBuf>>>,
     pub qr_code: widget::image::Handle,
     pub server_handle: Option<iced::task::Handle>,
 }
@@ -20,13 +20,13 @@ impl Default for State {
             dark_mode: true,
             ip_adress: ip,
             port: 8080,
-            file_path: Vec::new(),
+            file_path: Arc::new(Mutex::new(Vec::new())),
             qr_code,
             server_handle: None,
         }
     }
-
 }
+
 impl State {
     pub fn create_url_string(&self) -> String {
         Self::url_string(&self.ip_adress.unwrap(), self.port)

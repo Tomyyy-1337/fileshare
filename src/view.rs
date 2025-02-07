@@ -51,15 +51,15 @@ pub fn view(state: &State) -> iced::Element<Message> {
     .spacing(10)
     .width(iced::Length::Fill);
 
-   if !state.file_path.is_empty() {
+   if !state.file_path.lock().unwrap().is_empty() {
         let uploaded_files = text!("Shared Files:")
             .size(h1_size);
 
         let mut files_list = column![]
             .spacing(10);
 
-        for (i, path) in state.file_path.iter().enumerate() {
-            let text_file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown");
+        for (i, path) in state.file_path.lock().unwrap().iter().cloned().enumerate() {
+            let text_file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
             let text_file_name = text(text_file_name)
                 .size(h2_size);
 

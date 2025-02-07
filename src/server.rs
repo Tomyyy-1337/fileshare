@@ -1,4 +1,4 @@
-use std::{net::IpAddr, path::{Path, PathBuf}};
+use std::{net::IpAddr, path::{Path, PathBuf}, sync::{Arc, Mutex}};
 use serde::Serialize;
 use warp::{http::header, reply::Response, Filter};
 use tokio::fs::File;
@@ -6,7 +6,7 @@ use tokio_util::io::ReaderStream;
 use warp::hyper::Body;
 use tera::{Tera, Context};
 
-pub async fn server(ip: IpAddr, port: u16, path: Vec<PathBuf>) {
+pub async fn server(ip: IpAddr, port: u16, path: Arc<Mutex<Vec<PathBuf>>>) {
     let html_route = create_index_page(path.clone());
     let css_route = create_css_route();
     let js_route = create_script_route();
@@ -30,11 +30,11 @@ struct FileInfo {
     index: usize,
 }
 
-fn html_template(path: &Vec<PathBuf>) -> String {
+fn html_template(path: Arc<Mutex<Vec<PathBuf>>>) -> String {
     let tera = Tera::new("static/*.html").unwrap();
     let mut context = Context::new();
 
-    let files: Vec<FileInfo> = path.iter().enumerate().map(|(i, path)| {
+    let files: Vec<FileInfo> = path.lock().unwrap().iter().enumerate().map(|(i, path)| {
         let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
         FileInfo { name, index: i }
     }).collect();
@@ -44,13 +44,13 @@ fn html_template(path: &Vec<PathBuf>) -> String {
     tera.render("index.html", &context).unwrap()
 }
 
-fn create_update_content_route(path: Vec<PathBuf>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+fn create_update_content_route(path: Arc<Mutex<Vec<PathBuf>>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path("update-content")
     .map(move || {
         let tera = Tera::new("static/*.html").unwrap();
         let mut context = Context::new();
 
-        let files: Vec<FileInfo> = path.iter().enumerate().map(|(i, path)| {
+        let files: Vec<FileInfo> = path.lock().unwrap().iter().enumerate().map(|(i, path)| {
             let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
             FileInfo { name, index: i }
         }).collect();
@@ -63,10 +63,10 @@ fn create_update_content_route(path: Vec<PathBuf>) -> impl Filter<Extract = impl
     })
 }
 
-fn create_index_page(path: Vec<PathBuf>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+fn create_index_page(path: Arc<Mutex<Vec<PathBuf>>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let html_route = warp::path::path("index")
         .map(move || {
-            let html = html_template(&path);
+            let html = html_template(path.clone());
 
             let response = warp::reply::html(html);
             warp::reply::with_header(response, "Connection", "close")    
@@ -86,9 +86,9 @@ fn create_script_route() -> impl Filter<Extract = impl warp::Reply, Error = warp
         .and(warp::fs::file("./static/script.js"))
 }
 
-fn create_route(path: Vec<PathBuf>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+fn create_route(path: Arc<Mutex<Vec<PathBuf>>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let download_route = warp::path!("download" / usize).and_then(move |index| {
-        let path: PathBuf = path.get(index).cloned().unwrap();
+        let path: PathBuf = path.lock().unwrap().get(index).cloned().unwrap();
         async move {
             let file_name = Path::new(&path)
                 .file_name()
