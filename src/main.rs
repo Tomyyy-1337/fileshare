@@ -1,4 +1,6 @@
-use iced::{Size, Theme};
+use std::sync::Arc;
+
+use iced::{theme::{Custom, Palette}, Size, Theme};
 
 mod state;
 
@@ -24,7 +26,13 @@ fn main() -> iced::Result {
         })
         .theme(|state| match state.dark_mode {
             true => Theme::Dracula,
-            false => Theme::Light,
+            false => Theme::Custom(Arc::new(Custom::new("Light".to_string(), Palette {
+                background: iced::Color::WHITE,
+                text: iced::Color::BLACK,
+                primary: iced::Color::from_rgb8(159, 99, 246),
+                success: iced::Color::from_rgb8(0, 120, 212),
+                danger: iced::Color::from_rgb8(255, 0, 0),
+            })))
         })
         .antialiasing(true)
         .run()
