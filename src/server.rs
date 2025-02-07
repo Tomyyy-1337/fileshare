@@ -7,7 +7,7 @@ use warp::hyper::Body;
 use tera::{Tera, Context};
 
 pub async fn server(ip: IpAddr, port: u16, path: Arc<Mutex<Vec<PathBuf>>>) {
-    let html_route = create_index_page(path.clone());
+    let html_route = create_index_route(path.clone());
     let static_route = create_static_route();
     let download_route = create_download_route(path.clone());
     let update_content_route = create_update_content_route(path);
@@ -66,7 +66,7 @@ fn create_update_content_route(path: Arc<Mutex<Vec<PathBuf>>>) -> impl Filter<Ex
     })
 }
 
-fn create_index_page(path: Arc<Mutex<Vec<PathBuf>>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+fn create_index_route(path: Arc<Mutex<Vec<PathBuf>>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let html_route = warp::path::path("index")
         .map(move || {
             let html = html_template(path.clone());
