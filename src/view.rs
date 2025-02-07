@@ -108,7 +108,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
             .size(p_size));
         left = left.push(text!("Drag and drop a file inside the window or click the button below to select a file.")
             .size(p_size));
-        left = left.push(url_select_button.width(iced::Length::Fill));
+        left = left.push(url_select_button);
         
     }
 

@@ -73,7 +73,7 @@ fn create_index_page(path: Vec<PathBuf>) -> impl Filter<Extract = impl warp::Rep
 fn create_css_route() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path("static")
         .and(warp::path("style.css"))
-        .and(warp::fs::file("./style.css"))
+        .and(warp::fs::file("./static/style.css"))
 }
 
 fn create_route(path: Vec<PathBuf>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
