@@ -37,7 +37,7 @@ impl State {
     }
 
     fn create_qr_code(url: &String, size: usize) -> widget::image::Handle {
-        let data = qrcode_generator::to_image(url, QrCodeEcc::Medium, size).expect("Couldn't generate QR code.")
+        let data = qrcode_generator::to_image(url, QrCodeEcc::Quartile, size).expect("Couldn't generate QR code.")
             .into_iter()
             .flat_map(|pixel| {
                 vec![pixel, pixel, pixel, 255]

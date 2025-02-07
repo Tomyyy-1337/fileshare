@@ -1,4 +1,4 @@
-use std::{path::PathBuf, process::Command, thread::{sleep}};
+use std::{path::PathBuf, process::Command, thread::sleep};
 use copypasta::{ClipboardContext, ClipboardProvider};
 use rfd::FileDialog;
 use iced::Task;
