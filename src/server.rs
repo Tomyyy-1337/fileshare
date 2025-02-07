@@ -1,8 +1,9 @@
 use std::{net::IpAddr, path::{Path, PathBuf}};
-use warp::{http::header, reply::Response, Filter};
-use tokio::fs::File;
-use tokio_util::io::ReaderStream;
+use warp::{filters::multipart::FormData, http::header, reply::Response, Filter};
+use tokio::{fs::File, io::AsyncWriteExt};
+use tokio_util::{bytes::Buf, io::ReaderStream};
 use warp::hyper::Body;
+use futures::TryStreamExt;
 
 pub async fn server(ip: IpAddr, port: u16, path: Vec<PathBuf>) {
     let html_route = create_index_page(path.clone());
@@ -19,8 +20,39 @@ pub async fn server(ip: IpAddr, port: u16, path: Vec<PathBuf>) {
 fn create_index_page(path: Vec<PathBuf>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let links = path.iter().enumerate().map(|(i, path)| {
         let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown");
-        format!("<div class=\"row\"><p class=\"name\">{}</p><a class=\"link\" href=\"download/{}\">Download</a></div>", name, i)
+        let file_format = path.extension().and_then(|n| n.to_str()).unwrap_or("Unknown");
+        match file_format {
+            "jpg" | "jpeg" | "png" | "gif" | "bmp" | "webp" => format!(
+                r#"
+                <div class="row">
+                    <p class="name">{}</p>
+                    <a class="link" href="download/{}">Download</a>
+                    <button class="toggle-button" onclick="toggleImage('image-{}')">Show/Hide Image</button>
+                    <div id="image-{}" class="image-container" style="display: none;">
+                        <img src="download/{}" alt="{}" style="max-width: 100%; height: auto;">
+                    </div>
+                </div>
+                "#,
+                name, i, i, i, i, name
+            ),
+            _ => format!(
+                r#"
+                <div class="row">
+                    <p class="name">{}</p>
+                    <a class="link" href="download/{}">Download</a>
+                </div>
+                "#,
+                name, i
+            ),
+        }
     }).collect::<Vec<String>>().join("<br>");
+
+//     let form = 
+// r#"<form action="/upload" method="post" enctype="multipart/form-data">
+//     <label for="file">Select file:</label>
+//     <input type="file" id="file" name="file">
+//     <button type="submit" class="button">Upload</button>
+// </form>"#;
 
     let script = 
         "<script>

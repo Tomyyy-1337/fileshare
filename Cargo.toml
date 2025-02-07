@@ -16,3 +16,4 @@ memmap2 = "0.9.5"
 tokio = { version = "1.43.0", features = ["full"] }
 tokio-util = "0.7.13"
 zip = "2.2.2"
+futures = "0.3.31"

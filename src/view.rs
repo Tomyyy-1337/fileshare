@@ -33,7 +33,15 @@ pub fn view(state: &State) -> iced::Element<Message> {
         .size(h1_size);
 
     let url_select_button = button("Select File")
-        .on_press(Message::SelectPath);
+        .on_press(Message::SelectFilesExplorer)
+        .width(iced::Length::FillPortion(1));
+    
+    let url_select_button2 = button("Select Folder")
+        .on_press(Message::SelectFolderExplorer)
+        .width(iced::Length::FillPortion(1));
+
+    let url_select_row = row![url_select_button, url_select_button2]
+        .spacing(5);
 
     // === Layout ===
     let mut left = column![
@@ -99,7 +107,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
             .size(h2_size);
         
         left = left.push(text_new_file);
-        left = left.push(url_select_button.width(iced::Length::Fill));
+        left = left.push(url_select_row.width(iced::Length::Fill));
         left = left.push(uploaded_files);
         left = left.push(files_list);
         left = left.push(delete_all_button);
@@ -108,7 +116,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
             .size(p_size));
         left = left.push(text!("Drag and drop a file inside the window or click the button below to select a file.")
             .size(p_size));
-        left = left.push(url_select_button.width(iced::Length::Fill));
+        left = left.push(url_select_row.width(iced::Length::Fill));
         
     }
 
