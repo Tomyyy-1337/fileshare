@@ -1,0 +1,7 @@
+{% for file in files %}
+<div class="row">
+    <p class="name">{{ file.name }}</p>
+    <a class="link" href="download/{{ file.index }}">Download</a>
+</div>
+<br>
+{% endfor %}
