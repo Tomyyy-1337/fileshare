@@ -61,7 +61,8 @@ pub fn view(state: &State) -> iced::Element<Message> {
         for (i, path) in state.file_path.lock().unwrap().iter().cloned().enumerate() {
             let text_file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
             let text_file_name = text(text_file_name)
-                .size(h2_size);
+                .size(h2_size)
+                .height(iced::Length::Fixed(30.0));
 
             let text_current_file = text_input("", path.to_str().unwrap())
                 .size(p_size)
