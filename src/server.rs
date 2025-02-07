@@ -6,17 +6,20 @@ use tokio_util::io::ReaderStream;
 use warp::hyper::Body;
 use tera::{Tera, Context};
 
+fn create_static_route() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path("static")
+        .and(warp::fs::dir("./static"))
+}
+
 pub async fn server(ip: IpAddr, port: u16, path: Arc<Mutex<Vec<PathBuf>>>) {
     let html_route = create_index_page(path.clone());
-    let css_route = create_css_route();
-    let js_route = create_script_route();
+    let static_route = create_static_route();
     let download_route = create_route(path.clone());
     let update_content_route = create_update_content_route(path);
 
     let routes = html_route
         .or(update_content_route)
-        .or(css_route)
-        .or(js_route)
+        .or(static_route)
         .or(download_route);
 
     warp::serve(routes)
@@ -31,7 +34,7 @@ struct FileInfo {
 }
 
 fn html_template(path: Arc<Mutex<Vec<PathBuf>>>) -> String {
-    let tera = Tera::new("static/*.html").unwrap();
+    let tera = Tera::new("template/*.html").unwrap();
     let mut context = Context::new();
 
     let files: Vec<FileInfo> = path.lock().unwrap().iter().enumerate().map(|(i, path)| {
@@ -47,7 +50,7 @@ fn html_template(path: Arc<Mutex<Vec<PathBuf>>>) -> String {
 fn create_update_content_route(path: Arc<Mutex<Vec<PathBuf>>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path("update-content")
     .map(move || {
-        let tera = Tera::new("static/*.html").unwrap();
+        let tera = Tera::new("template/*.html").unwrap();
         let mut context = Context::new();
 
         let files: Vec<FileInfo> = path.lock().unwrap().iter().enumerate().map(|(i, path)| {
@@ -72,18 +75,6 @@ fn create_index_page(path: Arc<Mutex<Vec<PathBuf>>>) -> impl Filter<Extract = im
             warp::reply::with_header(response, "Connection", "close")    
         });
     html_route
-}
-
-fn create_css_route() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path("static")
-        .and(warp::path("style.css"))
-        .and(warp::fs::file("./static/style.css"))
-}
-
-fn create_script_route() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path("static")
-        .and(warp::path("script.js"))
-        .and(warp::fs::file("./static/script.js"))
 }
 
 fn create_route(path: Arc<Mutex<Vec<PathBuf>>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
