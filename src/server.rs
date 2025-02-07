@@ -6,11 +6,6 @@ use tokio_util::io::ReaderStream;
 use warp::hyper::Body;
 use tera::{Tera, Context};
 
-fn create_static_route() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path("static")
-        .and(warp::fs::dir("./static"))
-}
-
 pub async fn server(ip: IpAddr, port: u16, path: Arc<Mutex<Vec<PathBuf>>>) {
     let html_route = create_index_page(path.clone());
     let static_route = create_static_route();
@@ -31,6 +26,11 @@ pub async fn server(ip: IpAddr, port: u16, path: Arc<Mutex<Vec<PathBuf>>>) {
 struct FileInfo {
     name: String,
     index: usize,
+}
+
+fn create_static_route() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path("static")
+        .and(warp::fs::dir("./static"))
 }
 
 fn html_template(path: Arc<Mutex<Vec<PathBuf>>>) -> String {
