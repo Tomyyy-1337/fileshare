@@ -52,5 +52,6 @@ async function updateContent() {
         document.getElementById('fileList').innerHTML = html;
     } catch (error) {
         console.error(error);
+        document.getElementById('fileList').innerHTML = "<h2>No Files available</h2>";
     }
 }
