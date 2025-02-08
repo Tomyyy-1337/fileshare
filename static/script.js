@@ -51,7 +51,6 @@ async function updateContent() {
         const html = await response.text();
         document.getElementById('fileList').innerHTML = html;
     } catch (error) {
-        console.error(error);
         document.getElementById('fileList').innerHTML = "<h2>No Files available</h2>";
     }
 }
