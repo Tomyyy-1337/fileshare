@@ -69,8 +69,12 @@ fn change_port(state: &mut State) -> Task<Message> {
 }
 
 fn public_mode(state: &mut State) {
-    state.local_host = false;
-    state.qr_code = State::create_qr_code(&state.create_url_string(), 1200);
+    if state.ip_adress_public.is_some() {
+        state.local_host = false;
+        state.qr_code = State::create_qr_code(&state.create_url_string(), 1200);
+    } else {
+        state.ip_adress_public = public_ip_address::perform_lookup(None).map(|lookup|lookup.ip).ok();
+    }
 }
 
 fn localhost_mode(state: &mut State) {
