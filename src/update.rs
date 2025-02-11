@@ -41,11 +41,18 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         Message::Localhost                    => localhost_mode(state),
         Message::PublicIp                     => public_mode(state),
         Message::ChangePort                   => return change_port(state),
-        Message::PortTextUpdate(port) => state.port_buffer = port,
+        Message::PortTextUpdate(port) => update_port_text_field(state, port),
         Message::None => {}
     }
 
     Task::none()
+}
+
+fn update_port_text_field(state: &mut State, port: String) {
+    match port.parse::<u16>() {
+        Err(_) if !port.is_empty() => {},
+        _ => state.port_buffer = port,        
+    }
 }
 
 fn change_port(state: &mut State) -> Task<Message> {
