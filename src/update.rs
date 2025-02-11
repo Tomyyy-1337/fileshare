@@ -1,4 +1,4 @@
-use std::{path::PathBuf, process::Command};
+use std::{path::PathBuf, process::Command, thread::sleep};
 use copypasta::{ClipboardContext, ClipboardProvider};
 use rfd::FileDialog;
 use iced::Task;
@@ -19,52 +19,90 @@ pub enum Message {
     SelectFilesExplorer,
     SelectFolderExplorer,
     DeleteAllFiles,
+    Localhost,
+    PublicIp,
+    ChangePort,
+    PortTextUpdate(String),
 }
 
 pub fn update(state: &mut State, message: Message) -> Task<Message> {
     match message {
-        Message::ToggleDarkMode             => state.dark_mode = !state.dark_mode,
-        Message::CopyUrl                    => copy_url_to_clipboard(state),
-        Message::FileDropped(path) => return add_path(state, path),
-        Message::ServerStopped              => state.server_handle = None,
-        Message::OpenInBrowser              => webbrowser::open(&state.create_url_string()).unwrap(),
-        Message::DeleteFile(indx)    => delete_file(state, indx),        
-        Message::OpenFile(indx)      => open_in_explorer(state, indx),
-        Message::ShowInExplorer(indx)=> show_in_explorer(state, indx),
-        Message::SelectFilesExplorer        => return select_files(state),
-        Message::SelectFolderExplorer       => return select_folders(state),
-        Message::DeleteAllFiles             => delete_all_files(state),
-        Message::None                       => {}
+        Message::ToggleDarkMode               => state.dark_mode = !state.dark_mode,
+        Message::CopyUrl                      => copy_url_to_clipboard(state),
+        Message::FileDropped(path)   => return add_files_from_path(state, path),
+        Message::ServerStopped                => state.server_handle = None,
+        Message::OpenInBrowser                => webbrowser::open(&state.create_url_string()).unwrap(),
+        Message::DeleteFile(indx)      => delete_file(state, indx),        
+        Message::OpenFile(indx)        => open_in_explorer(state, indx),
+        Message::ShowInExplorer(indx)  => show_in_explorer(state, indx),
+        Message::SelectFilesExplorer          => return select_files_in_explorer(state),
+        Message::SelectFolderExplorer         => return select_folders_in_explorer(state),
+        Message::DeleteAllFiles               => delete_all_files(state),
+        Message::Localhost                    => localhost_mode(state),
+        Message::PublicIp                     => public_mode(state),
+        Message::ChangePort                   => return change_port(state),
+        Message::PortTextUpdate(port) => state.port_buffer = port,
+        Message::None => {}
     }
 
     Task::none()
 }
 
-fn select_files(state: &mut State) -> Task<Message> {
+fn change_port(state: &mut State) -> Task<Message> {
+    let port = state.port_buffer.parse::<u16>();
+    if port.is_err() {
+        return Task::none();
+    }
+    let port = port.unwrap();
+    if port == state.port {
+        return Task::none();
+    }
+    state.port = port;
+    state.qr_code = State::create_qr_code(&state.create_url_string(), 1200);
+    if let Some(handle) = &state.server_handle {
+        handle.abort();
+        state.server_handle = None;
+        sleep(std::time::Duration::from_millis(50));
+        return start_server(state);
+    }
+    Task::none()
+}
+
+fn public_mode(state: &mut State) {
+    state.local_host = false;
+    state.qr_code = State::create_qr_code(&state.create_url_string(), 1200);
+}
+
+fn localhost_mode(state: &mut State) {
+    state.local_host = true;
+    state.qr_code = State::create_qr_code(&state.create_url_string(), 1200);
+}
+
+fn select_files_in_explorer(state: &mut State) -> Task<Message> {
     let paths: Option<Vec<PathBuf>> = FileDialog::new()
         .add_filter("Any", &["*"])
         .pick_files();
     if let Some(paths) = paths {
-        return add_selected_files(state, paths);
+        return add_selected_files_list(state, paths);
     } 
     Task::none()
 }
 
 
-fn select_folders(state: &mut State) -> Task<Message> {
+fn select_folders_in_explorer(state: &mut State) -> Task<Message> {
     let paths: Option<Vec<PathBuf>> = FileDialog::new()
         .add_filter("Any", &["*"])
         .pick_folders();
     if let Some(paths) = paths {
-        return add_selected_files(state, paths);
+        return add_selected_files_list(state, paths);
     }
     Task::none()
 }
 
-fn add_selected_files(state: &mut State, paths: Vec<PathBuf>) -> Task<Message> {
+fn add_selected_files_list(state: &mut State, paths: Vec<PathBuf>) -> Task<Message> {
     let mut tasks = Vec::new();
     for path in paths {
-        tasks.push(add_path(state, path));
+        tasks.push(add_files_from_path(state, path));
     }
     Task::batch(tasks)
 }
@@ -123,7 +161,7 @@ fn find_files_recursive(path: &PathBuf, files: &mut Vec<PathBuf>) {
     }
 }
 
-fn add_path(state: &mut State, path: PathBuf) -> Task<Message> {
+fn add_files_from_path(state: &mut State, path: PathBuf) -> Task<Message> {
     let mut paths = Vec::new();
     find_files_recursive(&path, &mut paths);
 
@@ -143,7 +181,10 @@ fn add_path(state: &mut State, path: PathBuf) -> Task<Message> {
 }
 
 fn start_server(state: &mut State) -> Task<Message> {
-    let task =  Task::perform(server(state.ip_adress.unwrap(), state.port, state.file_path.clone()), |_result| Message::ServerStopped);
+    if state.file_path.lock().unwrap().is_empty() {
+        return Task::none();
+    }
+    let task =  Task::perform(server(state.ip_adress, state.port, state.file_path.clone()), |_result| Message::ServerStopped);
     let (task, handle) = Task::abortable(task);
     state.server_handle = Some(handle);
     task

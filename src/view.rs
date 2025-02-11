@@ -1,12 +1,12 @@
-use iced::{theme::palette, widget::{self, button, column, container, row, scrollable, text, text_input}, Theme};
+use iced::{theme::palette, widget::{self, button, column, container, row, scrollable, text, text_input::{self, default}, Theme}};
 use crate::{state::State, update::Message};
 
 pub fn view(state: &State) -> iced::Element<Message> {
     let h1_size = 30;
     let h2_size = 20;
     let p_size = 15;
-    
-    let settings_text = text!("Settings:")
+     
+    let settings_text = text!("Theme:")
         .size(h2_size);
 
     let theme_button = button("Toggle Dark Mode")
@@ -19,7 +19,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
         .size(h1_size);
 
     let url_string =  state.create_url_string();
-    let url_text_field = text_input("", &url_string)
+    let url_text_field = widget::text_input("", &url_string)
         .size(p_size)
         .on_input(|_| Message::None);
 
@@ -43,6 +43,35 @@ pub fn view(state: &State) -> iced::Element<Message> {
     let url_select_row = row![url_select_button, url_select_button2]
         .spacing(5);
 
+    let port_title = text!("Port:")
+        .size(h2_size);
+    
+    let update_port_button = button("Update Port")
+        .on_press(Message::ChangePort);
+
+    let mut port_text = widget::text_input("Port", &state.port_buffer)
+        .on_input(Message::PortTextUpdate)
+        .on_submit(Message::ChangePort)
+        .width(iced::Length::Fixed(100.0));
+
+    match state.port_buffer.parse::<u16>() {
+        Err(_) => port_text = port_text.style(|theme, status| {
+            iced::widget::text_input::Style {
+                background: iced::Background::Color(iced::Color::from_rgb8(255, 0, 0)),
+                ..default(theme, status)                
+            }
+        }),
+        Ok(n) if state.port != n => 
+            port_text = port_text.style(|theme, status| {
+                iced::widget::text_input::Style {
+                    background: iced::Background::Color(iced::Color::from_rgb8(0, 0, 255)),
+                    ..default(theme, status)                
+                }
+            }
+        ),
+        _ => {}
+    }
+
     // === Layout ===
     let mut left = column![
         upload_files,
@@ -56,7 +85,8 @@ pub fn view(state: &State) -> iced::Element<Message> {
             .size(h1_size);
 
         let mut files_list = column![]
-            .spacing(10);
+            .spacing(10)
+            .padding(12);
 
         for (i, path) in state.file_path.lock().unwrap().iter().cloned().enumerate() {
             let text_file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
@@ -64,7 +94,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
                 .size(h2_size)
                 .height(iced::Length::Fixed(30.0));
 
-            let text_current_file = text_input("", path.to_str().unwrap())
+            let text_current_file = widget::text_input("", path.to_str().unwrap())
                 .size(p_size)
                 .on_input(|_| Message::None);
                     
@@ -99,7 +129,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
 
         let files_list = scrollable(files_list)
             .height(iced::Length::Fill);
-
+    
         let delete_all_button = button("Delete All")
             .on_press(Message::DeleteAllFiles)
             .width(iced::Length::FillPortion(1));
@@ -133,8 +163,15 @@ pub fn view(state: &State) -> iced::Element<Message> {
         ]
         .spacing(5);
     
+    let select_row = row![
+        button("Localhost").on_press(Message::Localhost).width(iced::Length::FillPortion(1)),
+        button("Public IP").on_press(Message::PublicIp).width(iced::Length::FillPortion(1))
+    ]
+    .spacing(5);
+
     let right = column![
         url_text,
+        select_row,
         url_text_field.width(iced::Length::Fill),
         url_buttons_row,
         image
@@ -154,6 +191,9 @@ pub fn view(state: &State) -> iced::Element<Message> {
     let footer = row![
         settings_text,
         theme_button,
+        port_title,
+        port_text,
+        update_port_button
     ]
     .spacing(20)
     .padding(10)
@@ -170,7 +210,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
     ]
     .width(iced::Length::Fixed(1200.0))
     .height(iced::Length::Fill)
-    .padding(10)
+    .padding(5)
     .spacing(10);
     
     if state.server_handle.is_some() {

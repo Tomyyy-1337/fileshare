@@ -49,7 +49,8 @@ fn use_template(path: Arc<Mutex<Vec<PathBuf>>>, route: &'static str, template: &
             let html = tera.render(template, &context).unwrap();
 
             let response = warp::reply::html(html);
-            warp::reply::with_header(response, "Connection", "close")    
+            response
+            // warp::reply::with_header(response, "Connection", "close")    
         });
     html_route
 }
