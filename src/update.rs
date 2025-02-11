@@ -49,7 +49,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
 }
 
 fn update_port_text_field(state: &mut State, port: String) {
-    match port.parse::<u16>() {
+   match port.parse::<u16>() {
         Err(_) if !port.is_empty() => {},
         _ => state.port_buffer = port,        
     }

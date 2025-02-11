@@ -1,29 +1,40 @@
 let downloadsActive = false;
+let numDownloads = 0;
+let numDownloadsCompleted = 0;
 
 function scheduleContentUpdate() {
     setTimeout(() => {
         if (!downloadsActive) {
             updateContent();
-        } 
+        }
         scheduleContentUpdate();
     }, 2000);
 }
 
 scheduleContentUpdate();
 
+function downloadButtonString() {
+    if (downloadsActive) {
+        return 'Downloading...(' + numDownloadsCompleted + ' / ' + numDownloads + ')'; 
+    } else {
+        return 'Download All';
+    }
+}
+
 document.getElementById('downloadAll').addEventListener('click', async () => {
+    const links = document.querySelectorAll('a.link');
+    numDownloadsCompleted = 0;
+    numDownloads = links.length;
     const button = document.getElementById('downloadAll');
     const originalText = button.textContent;
-    button.textContent = 'Downloading...';
     button.disabled = true;
-
-    const links = document.querySelectorAll('a.link');
     downloadsActive = true;
-
+    button.textContent = downloadButtonString();
+    
     await Promise.all(Array.from(links).map(link => downloadFile(link)));
 
-    downloadsActive = false;
     button.textContent = originalText;
+    downloadsActive = false;
     button.disabled = false;
 });
 
@@ -43,6 +54,8 @@ async function downloadFile(link) {
     } catch (error) {
         console.error(error);
     }
+    numDownloadsCompleted++;
+    document.getElementById('downloadAll').textContent = downloadButtonString();
 }
 
 async function updateContent() {
