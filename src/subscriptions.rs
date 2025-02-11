@@ -6,10 +6,12 @@ use crate::update::Message;
 pub fn subscription(state: &State) -> Subscription<Message> {
     let keyboard = keyboard_input(state);
     let window = window_events();
+    let update_loop = iced::time::every(std::time::Duration::from_secs(1)).map(|_| Message::None);
 
     Subscription::batch([
         keyboard, 
         window,
+        update_loop,
     ])
 }
 

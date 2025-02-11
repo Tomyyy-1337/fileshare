@@ -80,15 +80,24 @@ pub fn view(state: &State) -> iced::Element<Message> {
     .spacing(10)
     .width(iced::Length::Fill);
 
-   if !state.file_path.lock().unwrap().is_empty() {
-        let uploaded_files = text!("Shared Files:")
+    let file_path = state.file_path.lock().unwrap();
+    if !file_path.is_empty() {
+        let shared_files_text = match file_path.len() {
+            1 => "Shared File:".to_owned(),
+            _ => format!("Shared Files ({}):", file_path.len())   
+        };
+
+        let uploaded_files = text(shared_files_text)
             .size(h1_size);
+
+        let text_num_send_files = text!("Downloads: {}", state.num_send_files.lock().unwrap())
+            .size(h2_size); 
 
         let mut files_list = column![]
             .spacing(10)
             .padding(12);
 
-        for (i, path) in state.file_path.lock().unwrap().iter().cloned().enumerate() {
+        for (i, path) in file_path.iter().cloned().enumerate() {
             let text_file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
             let text_file_name = text(text_file_name)
                 .size(h2_size)
@@ -140,6 +149,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
         left = left.push(text_new_file);
         left = left.push(url_select_row.width(iced::Length::Fill));
         left = left.push(uploaded_files);
+        left = left.push(text_num_send_files);
         left = left.push(files_list);
         left = left.push(delete_all_button);
     } else {

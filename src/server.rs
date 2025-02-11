@@ -1,4 +1,4 @@
-use std::{net::IpAddr, path::{Path, PathBuf}, sync::{Arc, Mutex}};
+use std::{net::IpAddr, ops::Add, path::{Path, PathBuf}, sync::{Arc, Mutex}};
 use serde::Serialize;
 use warp::{http::header, reply::Response, Filter};
 use tokio::fs::File;
@@ -6,11 +6,11 @@ use tokio_util::io::ReaderStream;
 use warp::hyper::Body;
 use tera::{Tera, Context};
 
-pub async fn server(ip: IpAddr, port: u16, path: Arc<Mutex<Vec<PathBuf>>>) {
+pub async fn server(ip: IpAddr, port: u16, path: Arc<Mutex<Vec<PathBuf>>>, num_send_files: Arc<Mutex<usize>>) {
     let html_route = use_template(path.clone(), "index", "index.html");
     let update_route = use_template(path.clone(), "update-content", "file_list.html");
     let static_route = create_static_route();
-    let download_route = create_download_route(path.clone());
+    let download_route = create_download_route(path.clone(), num_send_files.clone());
 
     let routes = html_route
         .or(update_route)
@@ -55,9 +55,10 @@ fn use_template(path: Arc<Mutex<Vec<PathBuf>>>, route: &'static str, template: &
     html_route
 }
 
-fn create_download_route(path: Arc<Mutex<Vec<PathBuf>>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+fn create_download_route(path: Arc<Mutex<Vec<PathBuf>>>, num_send_files: Arc<Mutex<usize>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let download_route = warp::path!("download" / usize).and_then(move |index| {
         let path: PathBuf = path.lock().unwrap().get(index).cloned().unwrap();
+        let num_send_files = num_send_files.clone();
         async move {
             let file_name = Path::new(&path)
                 .file_name()
@@ -74,6 +75,11 @@ fn create_download_route(path: Arc<Mutex<Vec<PathBuf>>>) -> impl Filter<Extract 
                 header::CONTENT_DISPOSITION,
                 format!("attachment; filename=\"{}\"", file_name),
             );
+
+            {
+                let mut num = num_send_files.lock().unwrap();
+                *num += 1;
+            }
 
             Ok::<_, warp::Rejection>(warp::reply::with_header(response, "Connection", "close"))
         }

@@ -1,4 +1,4 @@
-use std::{net::IpAddr, path::PathBuf, sync::{Arc, Mutex}};
+use std::{net::IpAddr, path::PathBuf, sync::{atomic::AtomicUsize, Arc, Mutex}};
 use local_ip_address::local_ip;
 use iced::widget;
 use qrcode_generator::QrCodeEcc;
@@ -13,6 +13,7 @@ pub struct State {
     pub server_handle: Option<iced::task::Handle>,
     pub port_buffer: String,
     pub local_host: bool,
+    pub num_send_files: Arc<Mutex<usize>>,
 }
 
 impl Default for State {
@@ -31,6 +32,7 @@ impl Default for State {
             server_handle: None,
             port_buffer: "8080".to_string(),
             local_host: true,
+            num_send_files: Arc::new(Mutex::new(0)),
         }
     }
 }

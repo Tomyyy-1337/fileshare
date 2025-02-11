@@ -23,10 +23,11 @@ function downloadButtonString() {
 
 document.getElementById('downloadAll').addEventListener('click', async () => {
     const links = document.querySelectorAll('a.link');
-    numDownloadsCompleted = 0;
-    numDownloads = links.length;
     const button = document.getElementById('downloadAll');
     const originalText = button.textContent;
+
+    numDownloadsCompleted = 0;
+    numDownloads = links.length;
     button.disabled = true;
     downloadsActive = true;
     button.textContent = downloadButtonString();
@@ -40,11 +41,12 @@ document.getElementById('downloadAll').addEventListener('click', async () => {
 
 async function downloadFile(link) {
     const url = link.href;
-    const fileName = link.previousElementSibling.textContent;
 
     try {
         const response = await fetch(url);
         const blob = await response.blob();
+        const contentDisposition = response.headers.get('content-disposition');
+        const fileName = getFileNameFromContentDisposition(contentDisposition);
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = fileName;
@@ -56,6 +58,11 @@ async function downloadFile(link) {
     }
     numDownloadsCompleted++;
     document.getElementById('downloadAll').textContent = downloadButtonString();
+}
+
+function getFileNameFromContentDisposition(contentDisposition) {
+    const fileNameMatch = contentDisposition && contentDisposition.match(/filename="(.+)"/);
+    return fileNameMatch ? fileNameMatch[1] : 'unknown';
 }
 
 async function updateContent() {
