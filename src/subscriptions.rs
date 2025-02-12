@@ -1,4 +1,3 @@
-use iced::advanced::graphics::core::SmolStr;
 use iced::keyboard::key::Named;
 use iced::{keyboard, Subscription, window};
 use crate::state::State;

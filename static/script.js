@@ -68,8 +68,11 @@ function getFileNameFromContentDisposition(contentDisposition) {
 async function updateContent() {
     try {
         const response = await fetch('/update-content');
-        const html = await response.text();
+        const json = await response.json();
+        let html = json.html;
+        let size = json.size;
         document.getElementById('fileList').innerHTML = html;
+        document.getElementById('downloadAll').textContent = "Download All Files (" + size + ")";
     } catch (error) {
         document.getElementById('fileList').innerHTML = "<h2>No Files available</h2>";
     }

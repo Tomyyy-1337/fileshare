@@ -275,13 +275,3 @@ fn modify_style(mult: f32) -> impl Fn(&Theme) -> container::Style {
         }
     }
 }
-
-fn size_string(size: &usize) -> String {
-    match size {
-        s if *s < 1024 => format!("{} B", s),
-        s if *s < 1024 * 1024 => format!("{:.1} KB", *s as f64 / 1024.0),
-        s if *s < 1024 * 1024 * 1024 => format!("{:.1} MB", *s as f64 / 1024.0 / 1024.0),
-        s if *s < 1024 * 1024 * 1024 * 1024 => format!("{:.1} GB", *s as f64 / 1024.0 / 1024.0 / 1024.0),
-        s => format!("{:.1} TB", *s as f64 / 1024.0 / 1024.0 / 1024.0 / 1024.0),
-    }
-}

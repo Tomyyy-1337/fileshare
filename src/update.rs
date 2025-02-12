@@ -99,7 +99,6 @@ fn select_files_in_explorer(state: &mut State) -> Task<Message> {
     Task::none()
 }
 
-
 fn select_folders_in_explorer(state: &mut State) -> Task<Message> {
     let paths: Option<Vec<PathBuf>> = FileDialog::new()
         .add_filter("Any", &["*"])

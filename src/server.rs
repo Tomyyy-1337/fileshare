@@ -7,8 +7,8 @@ use warp::hyper::Body;
 use tera::{Tera, Context};
 
 pub async fn server(ip: IpAddr, port: u16, path: Arc<Mutex<Vec<(PathBuf, usize)>>>, num_send_files: Arc<Mutex<usize>>) {
-    let html_route = use_template(path.clone(), "index", "index.html");
-    let update_route = use_template(path.clone(), "update-content", "file_list.html");
+    let html_route = create_index_route(path.clone());
+    let update_route = create_refresh_route(path.clone());
     let static_route = create_static_route();
     let download_route = create_download_route(path.clone(), num_send_files.clone());
 
@@ -34,27 +34,49 @@ fn create_static_route() -> impl Filter<Extract = impl warp::Reply, Error = warp
         .and(warp::fs::dir("./static"))
 }
 
-fn use_template(path: Arc<Mutex<Vec<(PathBuf, usize)>>>, route: &'static str, template: &'static str) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    let html_route = warp::path::path(route)
+fn create_index_route(path: Arc<Mutex<Vec<(PathBuf, usize)>>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    let html_route = warp::path::path("index")
         .map(move || {
-            let tera = Tera::new("template/*.html").unwrap();
-            let mut context = Context::new();
-        
-            let files: Vec<FileInfo> = path.lock().unwrap().iter().enumerate().map(|(i, (path, size))| {
-                let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
-                let size_string = size_string(size);
-                FileInfo { name, index: i, size: size_string }
-            }).collect();
-            context.insert("files", &files);
-
-            let all_size: usize = path.lock().unwrap().iter().map(|(_, size)| size).sum();
-            context.insert("all_size", &size_string(&all_size));
-        
-            let html = tera.render(template, &context).unwrap();
-
+            let path = path.clone();
+            let html = fill_template(path, "index.html");
             warp::reply::html(html)
         });
     html_route
+}
+
+#[derive(Serialize)]
+struct UpdateData {
+    size: String,
+    html: String
+}
+
+fn create_refresh_route(path: Arc<Mutex<Vec<(PathBuf, usize)>>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    let refresh_route = warp::path("update-content")
+        .map(move || {
+            let html = fill_template(path.clone(), "file_list.html");
+            warp::reply::json(&UpdateData {
+                size: size_string(&path.lock().unwrap().iter().map(|(_, size)| size).sum()),
+                html
+            })
+        });
+    refresh_route
+}
+
+fn fill_template(path: Arc<Mutex<Vec<(PathBuf, usize)>>>, template: &'static str) -> String {
+    let tera: Tera = Tera::new("template/*.html").unwrap();
+    let mut context = Context::new();
+
+    let files: Vec<FileInfo> = path.lock().unwrap().iter().enumerate().map(|(i, (path, size))| {
+        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
+        let size_string = size_string(size);
+        FileInfo { name, index: i, size: size_string }
+    }).collect();
+    context.insert("files", &files);
+
+    let all_size: usize = path.lock().unwrap().iter().map(|(_, size)| size).sum();
+    context.insert("all_size", &size_string(&all_size));
+
+    tera.render(template, &context).unwrap()
 }
 
 fn size_string(size: &usize) -> String {
