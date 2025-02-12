@@ -64,10 +64,6 @@ body {
 }
 
 @media (max-width: 768px) {
-    .container {
-        width: 100%;
-    }
-
     .row {
         flex-direction: column;
         padding: 10px 20px 20px 20px;
