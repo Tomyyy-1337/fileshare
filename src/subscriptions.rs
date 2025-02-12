@@ -1,3 +1,5 @@
+use iced::advanced::graphics::core::SmolStr;
+use iced::keyboard::key::Named;
 use iced::{keyboard, Subscription, window};
 use crate::state::State;
 
@@ -25,6 +27,8 @@ fn window_events() -> Subscription<Message> {
 fn keyboard_input(_state: &State) -> Subscription<Message> {
     keyboard::on_key_press(|key, _modifyer| {
         match key {
+            keyboard::Key::Named(Named::Space) => Some(Message::SelectFilesExplorer),
+            keyboard::Key::Named(Named::Backspace) => Some(Message::DeleteAllFiles),
             _ => None,
         }
     })

@@ -94,7 +94,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
     if !file_path.is_empty() {
         let shared_files_text = match file_path.len() {
             1 => "Shared File:".to_owned(),
-            _ => format!("Shared Files ({}):", file_path.len())   
+            _ => format!("Shared Files [{}]:", file_path.len())   
         };
 
         let uploaded_files = text(shared_files_text)
@@ -148,6 +148,9 @@ pub fn view(state: &State) -> iced::Element<Message> {
 
         let files_list = scrollable(files_list)
             .height(iced::Length::Fill);
+
+        let files_list = container(files_list)
+            .style(modify_style(1.0));
     
         let delete_all_button = button("Delete All")
             .on_press(Message::DeleteAllFiles)
@@ -270,5 +273,15 @@ fn modify_style(mult: f32) -> impl Fn(&Theme) -> container::Style {
             background: Some(iced::Background::Color(darker_background)),
             ..container::Style::default()
         }
+    }
+}
+
+fn size_string(size: &usize) -> String {
+    match size {
+        s if *s < 1024 => format!("{} B", s),
+        s if *s < 1024 * 1024 => format!("{:.1} KB", *s as f64 / 1024.0),
+        s if *s < 1024 * 1024 * 1024 => format!("{:.1} MB", *s as f64 / 1024.0 / 1024.0),
+        s if *s < 1024 * 1024 * 1024 * 1024 => format!("{:.1} GB", *s as f64 / 1024.0 / 1024.0 / 1024.0),
+        s => format!("{:.1} TB", *s as f64 / 1024.0 / 1024.0 / 1024.0 / 1024.0),
     }
 }
