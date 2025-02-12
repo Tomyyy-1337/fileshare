@@ -1,4 +1,4 @@
-use std::{net::IpAddr, path::PathBuf, sync::{atomic::AtomicUsize, Arc, Mutex}};
+use std::{net::IpAddr, path::PathBuf, sync::{Arc, Mutex}};
 use local_ip_address::local_ip;
 use iced::widget;
 use qrcode_generator::QrCodeEcc;
@@ -8,7 +8,7 @@ pub struct State {
     pub ip_adress: IpAddr,
     pub ip_adress_public: Option<IpAddr>,
     pub port: u16,
-    pub file_path: Arc<Mutex<Vec<PathBuf>>>,
+    pub file_path: Arc<Mutex<Vec<(PathBuf, usize)>>>,
     pub qr_code: widget::image::Handle,
     pub server_handle: Option<iced::task::Handle>,
     pub port_buffer: String,

@@ -119,7 +119,7 @@ fn add_selected_files_list(state: &mut State, paths: Vec<PathBuf>) -> Task<Messa
 }
 
 fn show_in_explorer(state: &mut State, indx: usize) {
-    if let Some(path) = &state.file_path.lock().unwrap().get(indx) {
+    if let Some((path, _)) = &state.file_path.lock().unwrap().get(indx) {
         Command::new( "explorer" )
             .arg("/select,")
             .arg(path)
@@ -129,7 +129,7 @@ fn show_in_explorer(state: &mut State, indx: usize) {
 }
 
 fn open_in_explorer(state: &mut State, indx: usize) {
-    if let Some(path) = &state.file_path.lock().unwrap().get(indx) {
+    if let Some((path, _)) = &state.file_path.lock().unwrap().get(indx) {
         Command::new( "explorer" )
             .arg(path)
             .spawn( )
@@ -178,10 +178,11 @@ fn add_files_from_path(state: &mut State, path: PathBuf) -> Task<Message> {
 
     let mut task = Task::none();
     for file in paths {
-        if state.file_path.lock().unwrap().contains(&file) {
+        if state.file_path.lock().unwrap().iter().find(|(p, _)| p == &file).is_some() {
             continue;
         }
-        state.file_path.lock().unwrap().push(file);
+        let file_size = file.metadata().unwrap().len() as usize;
+        state.file_path.lock().unwrap().push((file, file_size));
         state.file_path.lock().unwrap().sort();
         if state.server_handle.is_none() {
             task = start_server(state);

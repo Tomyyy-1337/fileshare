@@ -1,4 +1,4 @@
-use iced::{theme::palette, widget::{self, button, column, container, row, scrollable, text, text_input::{self, default}, Theme}};
+use iced::{theme::palette, widget::{self, button, column, container, row, scrollable, text, text_input::default, Theme}};
 use crate::{state::State, update::Message};
 
 pub fn view(state: &State) -> iced::Element<Message> {
@@ -54,6 +54,16 @@ pub fn view(state: &State) -> iced::Element<Message> {
         .on_submit(Message::ChangePort)
         .width(iced::Length::Fixed(100.0));
 
+    let text_mode = match state.local_host {
+        true => "Mode: Localhost",
+        false => "Mode: Public IP"
+    };
+    let text_mode = text(text_mode)
+        .size(h2_size);
+
+    let text_connection_info = text("Connection Info:")
+        .size(h2_size);
+
     match state.port_buffer.parse::<u16>() {
         Err(_) => port_text = port_text.style(|theme, status| {
             iced::widget::text_input::Style {
@@ -97,7 +107,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
             .spacing(10)
             .padding(12);
 
-        for (i, path) in file_path.iter().cloned().enumerate() {
+        for (i, (path, _size)) in file_path.iter().cloned().enumerate() {
             let text_file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
             let text_file_name = text(text_file_name)
                 .size(h2_size)
@@ -149,8 +159,8 @@ pub fn view(state: &State) -> iced::Element<Message> {
         left = left.push(text_new_file);
         left = left.push(url_select_row.width(iced::Length::Fill));
         left = left.push(uploaded_files);
-        left = left.push(text_num_send_files);
         left = left.push(files_list);
+        left = left.push(text_num_send_files);
         left = left.push(delete_all_button);
     } else {
         left = left.push(text!("No file selected!")
@@ -181,7 +191,9 @@ pub fn view(state: &State) -> iced::Element<Message> {
 
     let right = column![
         url_text,
+        text_mode,
         select_row,
+        text_connection_info,
         url_text_field.width(iced::Length::Fill),
         url_buttons_row,
         image

@@ -1,4 +1,4 @@
-use std::{net::IpAddr, ops::Add, path::{Path, PathBuf}, sync::{Arc, Mutex}};
+use std::{net::IpAddr, path::{Path, PathBuf}, sync::{Arc, Mutex}};
 use serde::Serialize;
 use warp::{http::header, reply::Response, Filter};
 use tokio::fs::File;
@@ -6,7 +6,7 @@ use tokio_util::io::ReaderStream;
 use warp::hyper::Body;
 use tera::{Tera, Context};
 
-pub async fn server(ip: IpAddr, port: u16, path: Arc<Mutex<Vec<PathBuf>>>, num_send_files: Arc<Mutex<usize>>) {
+pub async fn server(ip: IpAddr, port: u16, path: Arc<Mutex<Vec<(PathBuf, usize)>>>, num_send_files: Arc<Mutex<usize>>) {
     let html_route = use_template(path.clone(), "index", "index.html");
     let update_route = use_template(path.clone(), "update-content", "file_list.html");
     let static_route = create_static_route();
@@ -26,6 +26,7 @@ pub async fn server(ip: IpAddr, port: u16, path: Arc<Mutex<Vec<PathBuf>>>, num_s
 struct FileInfo {
     name: String,
     index: usize,
+    size: String,
 }
 
 fn create_static_route() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
@@ -33,31 +34,41 @@ fn create_static_route() -> impl Filter<Extract = impl warp::Reply, Error = warp
         .and(warp::fs::dir("./static"))
 }
 
-fn use_template(path: Arc<Mutex<Vec<PathBuf>>>, route: &'static str, template: &'static str) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+fn use_template(path: Arc<Mutex<Vec<(PathBuf, usize)>>>, route: &'static str, template: &'static str) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let html_route = warp::path::path(route)
         .map(move || {
             let tera = Tera::new("template/*.html").unwrap();
             let mut context = Context::new();
         
-            let files: Vec<FileInfo> = path.lock().unwrap().iter().enumerate().map(|(i, path)| {
+            let files: Vec<FileInfo> = path.lock().unwrap().iter().enumerate().map(|(i, (path, size))| {
                 let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
-                FileInfo { name, index: i }
+                let size_string = size_string(size);
+                FileInfo { name, index: i, size: size_string }
             }).collect();
-        
             context.insert("files", &files);
+
+            let all_size: usize = path.lock().unwrap().iter().map(|(_, size)| size).sum();
+            context.insert("all_size", &size_string(&all_size));
         
             let html = tera.render(template, &context).unwrap();
 
-            let response = warp::reply::html(html);
-            response
-            // warp::reply::with_header(response, "Connection", "close")    
+            warp::reply::html(html)
         });
     html_route
 }
 
-fn create_download_route(path: Arc<Mutex<Vec<PathBuf>>>, num_send_files: Arc<Mutex<usize>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+fn size_string(size: &usize) -> String {
+    match size {
+        s if *s < 1024 => format!("{} B", s),
+        s if *s < 1024 * 1024 => format!("{:.1} KB", *s as f64 / 1024.0),
+        s if *s < 1024 * 1024 * 1024 => format!("{:.1} MB", *s as f64 / 1024.0 / 1024.0),
+        s => format!("{:.1} GB", *s as f64 / 1024.0 / 1024.0 / 1024.0),
+    }
+}
+
+fn create_download_route(path: Arc<Mutex<Vec<(PathBuf, usize)>>>, num_send_files: Arc<Mutex<usize>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let download_route = warp::path!("download" / usize).and_then(move |index| {
-        let path: PathBuf = path.lock().unwrap().get(index).cloned().unwrap();
+        let (path, _) = path.lock().unwrap().get(index).cloned().unwrap();
         let num_send_files = num_send_files.clone();
         async move {
             let file_name = Path::new(&path)
@@ -76,11 +87,7 @@ fn create_download_route(path: Arc<Mutex<Vec<PathBuf>>>, num_send_files: Arc<Mut
                 format!("attachment; filename=\"{}\"", file_name),
             );
 
-            {
-                let mut num = num_send_files.lock().unwrap();
-                *num += 1;
-            }
-
+            *num_send_files.lock().unwrap() += 1;
             Ok::<_, warp::Rejection>(warp::reply::with_header(response, "Connection", "close"))
         }
     });
