@@ -6,10 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
-    <h1>Fileshare</h1>
+    <h1>Fileshare</h1>  
     <button id="downloadAll">Download All Files ({{  all_size  }})</button>
-    <br>
-    <div id="fileList">
+    <div id="fileList" class="flex">
         {% include "file_list.html" %}
     </div>
     <div style="height: 300px;"></div>
