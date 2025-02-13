@@ -1,4 +1,4 @@
-use iced::{theme::palette, widget::{self, button, column, container, row, scrollable, text, text_input::default, Theme}};
+use iced::{theme::palette, widget::{self, button, column, container, row, scrollable, slider, text, text_input::default, Theme}};
 use crate::{state::State, update::Message};
 
 pub fn view(state: &State) -> iced::Element<Message> {
@@ -13,7 +13,8 @@ pub fn view(state: &State) -> iced::Element<Message> {
         .on_press(Message::ToggleDarkMode);
 
     let image = widget::image(&state.qr_code)
-        .width(iced::Length::Fill);
+        .width(iced::Length::Fixed(state.qr_code_size))
+        .height(iced::Length::Fill);
 
     let url_text = text!("Download URL:")
         .size(h1_size);
@@ -45,9 +46,6 @@ pub fn view(state: &State) -> iced::Element<Message> {
 
     let port_title = text!("Port:")
         .size(h2_size);
-    
-    let update_port_button = button("Update Port")
-        .on_press(Message::ChangePort);
 
     let mut port_text = widget::text_input("Port", &state.port_buffer)
         .on_input(Message::PortTextUpdate)
@@ -63,6 +61,13 @@ pub fn view(state: &State) -> iced::Element<Message> {
 
     let text_connection_info = text("Connection Info:")
         .size(h2_size);
+
+    let text_qrcode_size = text("QR Size:")
+        .size(h2_size);
+
+    let max_width = ((state.size.0 / 2.0).min(state.size.1 - 300.0)).min(600.0);
+    let slider = slider(50.0..=max_width, state.qr_code_size, Message::UpdateQrCodeSize)
+        .width(iced::Length::Fixed(100.0));
 
     match state.port_buffer.parse::<u16>() {
         Err(_) => port_text = port_text.style(|theme, status| {
@@ -89,7 +94,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
     .padding(5)
     .spacing(10)
     .width(iced::Length::Fill);
-
+    let is_empty = {
     let file_path = state.file_path.lock().unwrap();
     if !file_path.is_empty() {
         let shared_files_text = match file_path.len() {
@@ -165,14 +170,16 @@ pub fn view(state: &State) -> iced::Element<Message> {
         left = left.push(files_list);
         left = left.push(text_num_send_files);
         left = left.push(delete_all_button);
+        false
     } else {
         left = left.push(text!("No file selected!")
             .size(p_size));
         left = left.push(text!("Drag and drop a file inside the window or click the button below to select a file.")
             .size(p_size));
         left = left.push(url_select_row.width(iced::Length::Fill));
-        
+        true
     }
+    };
 
     let left = container(left)
         .style(modify_style(0.8))
@@ -204,7 +211,8 @@ pub fn view(state: &State) -> iced::Element<Message> {
     .padding(5)
     .spacing(10)
     .width(iced::Length::Fill)
-    .height(iced::Length::Fill);
+    .height(iced::Length::Fill)
+    .align_x(iced::alignment::Horizontal::Center);
 
     let right = container(right)
         .style(modify_style(0.8))
@@ -213,16 +221,20 @@ pub fn view(state: &State) -> iced::Element<Message> {
         .padding(5);
 
     // footer
-    let footer = row![
+    let mut footer = row![
         settings_text,
         theme_button,
         port_title,
         port_text,
-        update_port_button
     ]
     .spacing(20)
     .padding(10)
     .width(iced::Length::Fixed(1200.0));
+
+    if !is_empty {
+        footer = footer.push(text_qrcode_size);
+        footer = footer.push(slider);
+    }
 
     let footer = container(footer)
         .style(modify_style(0.8))

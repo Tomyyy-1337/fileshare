@@ -14,6 +14,8 @@ pub struct State {
     pub port_buffer: String,
     pub local_host: bool,
     pub num_send_files: Arc<Mutex<usize>>,
+    pub qr_code_size: f32,
+    pub size: (f32, f32),
 }
 
 impl Default for State {
@@ -33,6 +35,8 @@ impl Default for State {
             port_buffer: "8080".to_string(),
             local_host: true,
             num_send_files: Arc::new(Mutex::new(0)),
+            qr_code_size: 300.0,
+            size: (0.0, 0.0),
         }
     }
 }

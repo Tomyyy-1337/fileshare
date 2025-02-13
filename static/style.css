@@ -11,6 +11,10 @@ body {
     gap: 15px;        
 }
 
+h2 {
+    text-align: center;
+}
+
 .name {
     font-size: 18px;
     color: #e0e0e0;

@@ -1,6 +1,7 @@
 let downloadsActive = false;
 let numDownloads = 0;
 let numDownloadsCompleted = 0;
+let allSize = '';
 
 function scheduleContentUpdate() {
     setTimeout(() => {
@@ -17,7 +18,7 @@ function downloadButtonString() {
     if (downloadsActive) {
         return 'Downloading...(' + numDownloadsCompleted + ' / ' + numDownloads + ')'; 
     } else {
-        return 'Download All';
+        return 'Download All Files ' + allSize;
     }
 }
 
@@ -66,14 +67,18 @@ function getFileNameFromContentDisposition(contentDisposition) {
 }
 
 async function updateContent() {
+    let button = document.getElementById('downloadAll');
     try {
         const response = await fetch('/update-content');
         const json = await response.json();
         let html = json.html;
         let size = json.size;
+        allSize = size;
         document.getElementById('fileList').innerHTML = html;
         document.getElementById('downloadAll').textContent = "Download All Files (" + size + ")";
+        button.hidden = false;
     } catch (error) {
+        button.hidden = true;
         document.getElementById('fileList').innerHTML = "<h2>No Files available</h2>";
     }
 }

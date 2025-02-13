@@ -35,11 +35,12 @@ fn create_static_route() -> impl Filter<Extract = impl warp::Reply, Error = warp
 }
 
 fn create_index_route(path: Arc<Mutex<Vec<(PathBuf, usize)>>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    let html_route = warp::path::path("index")
+    let html_route = warp::path("index")
         .map(move || {
             let path = path.clone();
-            let html = fill_template(path, "index.html");
-            warp::reply::html(html)
+            let html_str = fill_template(path, "index.html");
+            let response = warp::reply::html(html_str);
+            warp::reply::with_header(response, "Connection", "close")
         });
     html_route
 }
@@ -54,10 +55,11 @@ fn create_refresh_route(path: Arc<Mutex<Vec<(PathBuf, usize)>>>) -> impl Filter<
     let refresh_route = warp::path("update-content")
         .map(move || {
             let html = fill_template(path.clone(), "file_list.html");
-            warp::reply::json(&UpdateData {
+            let response = warp::reply::json(&UpdateData {
                 size: size_string(&path.lock().unwrap().iter().map(|(_, size)| size).sum()),
                 html
-            })
+            });
+            warp::reply::with_header(response, "Connection", "close")
         });
     refresh_route
 }
