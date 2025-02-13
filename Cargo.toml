@@ -20,3 +20,4 @@ futures = "0.3.31"
 tera = "1.10.0"
 serde = { version = "1.0.217", features = ["derive"] }
 public-ip-address = { version = "0.3", features = ["blocking"] }
+bytes = "1.10.0"

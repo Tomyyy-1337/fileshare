@@ -4,7 +4,10 @@ use warp::{http::header, reply::Response, Filter};
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
 use warp::hyper::Body;
-use tera::{Tera, Context};
+use tera::Tera;
+use futures::stream::Stream;
+use std::pin::Pin;
+use std::task::{Context, Poll};
 
 pub async fn server(ip: IpAddr, port: u16, path: Arc<Mutex<Vec<(PathBuf, usize)>>>, num_send_files: Arc<Mutex<usize>>) {
     let html_route = create_index_route(path.clone());
@@ -66,7 +69,7 @@ fn create_refresh_route(path: Arc<Mutex<Vec<(PathBuf, usize)>>>) -> impl Filter<
 
 fn fill_template(path: Arc<Mutex<Vec<(PathBuf, usize)>>>, template: &'static str) -> String {
     let tera: Tera = Tera::new("template/*.html").unwrap();
-    let mut context = Context::new();
+    let mut context = tera::Context::new();
 
     let files: Vec<FileInfo> = path.lock().unwrap().iter().enumerate().map(|(i, (path, size))| {
         let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
@@ -103,18 +106,47 @@ fn create_download_route(path: Arc<Mutex<Vec<(PathBuf, usize)>>>, num_send_files
         
             let file = File::open(&path).await.map_err(|_| warp::reject::not_found())?;
             let stream = ReaderStream::new(file);
-            let body = Body::wrap_stream(stream);
+            let counting_stream = CountingStream::new(stream, num_send_files);
+            let body = Body::wrap_stream(counting_stream);
             let response = Response::new(body);
-
+        
             let response = warp::reply::with_header(
                 response,
                 header::CONTENT_DISPOSITION,
                 format!("attachment; filename=\"{}\"", file_name),
             );
-
-            *num_send_files.lock().unwrap() += 1;
-            Ok::<_, warp::Rejection>(warp::reply::with_header(response, "Connection", "close"))
+        
+            let response = warp::reply::with_header(response, "Connection", "close");
+            Ok::<_, warp::Rejection>(response)
         }
     });
     download_route
+}
+
+struct CountingStream<S> {
+    inner: S,
+    num_send_files: Arc<Mutex<usize>>,
+}
+
+impl<S> CountingStream<S> {
+    fn new(inner: S, num_send_files: Arc<Mutex<usize>>) -> Self {
+        CountingStream { inner, num_send_files }
+    }
+}
+
+impl<S> Stream for CountingStream<S>
+where
+    S: Stream<Item = Result<bytes::Bytes, std::io::Error>> + Unpin,
+{
+    type Item = Result<bytes::Bytes, std::io::Error>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        match Pin::new(&mut self.inner).poll_next(cx) {
+            Poll::Ready(None) => {
+                *self.num_send_files.lock().unwrap() += 1;
+                Poll::Ready(None)
+            }
+            other => other,
+        }
+    }
 }

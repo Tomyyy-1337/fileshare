@@ -1365,6 +1365,7 @@ dependencies = [
 name = "fileshare"
 version = "0.1.0"
 dependencies = [
+ "bytes",
  "copypasta",
  "futures",
  "iced",
