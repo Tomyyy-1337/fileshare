@@ -1,6 +1,6 @@
 use std::usize;
 
-use iced::{theme::palette, widget::{self, button, column, container, row, scrollable, slider, text, text_input::default, Theme}};
+use iced::{theme::palette, widget::{self, button, column, container, row, scrollable, text, text_input::default, Theme}};
 use crate::{server::size_string, state::{self, State}, update::Message};
 
 pub fn view(state: &State) -> iced::Element<Message> {
@@ -87,8 +87,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
     ]
     .padding(5)
     .spacing(10)
-    .width(iced::Length::Fill)
-    .align_x(iced::alignment::Horizontal::Center);
+    .width(iced::Length::Fill);
     {
     let file_path = state.file_path.lock().unwrap();
 
@@ -184,16 +183,15 @@ pub fn view(state: &State) -> iced::Element<Message> {
         left = left.push(files_list);
         left = left.push(text_num_send_files);
         left = left.push(delete_all_button);
-        false
+        left = left.align_x(iced::alignment::Horizontal::Center);
     } else {
         left = left.push(text!("No file selected!")
             .size(p_size));
         left = left.push(text!("Drag and drop a file inside the window or click the button below to select a file.")
             .size(p_size));
         left = left.push(url_select_row.width(iced::Length::Fill));
-        true
     }
-    };
+    }
 
     let left = container(left)
         .style(modify_style(0.8))
@@ -224,13 +222,13 @@ pub fn view(state: &State) -> iced::Element<Message> {
     ]
     .padding(5)
     .spacing(10)
-    .width(iced::Length::Fixed(300.0))
+    .width(iced::Length::Fill)
     .height(iced::Length::Fill)
     .align_x(iced::alignment::Horizontal::Center);
 
     let right = container(right)
         .style(modify_style(0.8))
-        .width(iced::Length::Fixed(300.0))
+        .width(iced::Length::Fixed(280.0))
         .height(iced::Length::FillPortion(1))
         .padding(5);
 
