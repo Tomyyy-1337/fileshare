@@ -250,7 +250,8 @@ pub fn view(state: &State) -> iced::Element<Message> {
     ]
     .spacing(20)
     .padding(10)
-    .width(iced::Length::Fixed(1200.0));
+    .width(iced::Length::Fixed(1200.0))
+    .align_y(iced::alignment::Vertical::Center);
 
     if !is_empty {
         footer = footer.push(text_qrcode_size);
