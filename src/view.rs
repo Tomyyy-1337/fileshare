@@ -95,7 +95,8 @@ pub fn view(state: &State) -> iced::Element<Message> {
     ]
     .padding(5)
     .spacing(10)
-    .width(iced::Length::Fill);
+    .width(iced::Length::Fill)
+    .align_x(iced::alignment::Horizontal::Center);
     let is_empty = {
     let file_path = state.file_path.lock().unwrap();
 
