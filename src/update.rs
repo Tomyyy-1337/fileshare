@@ -23,7 +23,6 @@ pub enum Message {
     PublicIp,
     ChangePort,
     PortTextUpdate(String),
-    UpdateQrCodeSize(f32),
     Resize(f32, f32),
 }
 
@@ -44,7 +43,6 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         Message::PublicIp                      => public_mode(state),
         Message::ChangePort                    => return change_port(state),
         Message::PortTextUpdate(port)  => update_port_text_field(state, port),
-        Message::UpdateQrCodeSize(size)   => state.qr_code_size = size,
         Message::Resize(width, height)=> state.size = (width as f32, height as f32),
         Message::None => {}
     }

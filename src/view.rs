@@ -15,8 +15,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
         .on_press(Message::ToggleDarkMode);
 
     let image = widget::image(&state.qr_code)
-        .width(iced::Length::Fixed(state.qr_code_size))
-        .height(iced::Length::Fill);
+        .width(iced::Length::Fill);
 
     let url_text = text!("Download URL:")
         .size(h1_size);
@@ -64,13 +63,6 @@ pub fn view(state: &State) -> iced::Element<Message> {
     let text_connection_info = text("Connection Info:")
         .size(h2_size);
 
-    let text_qrcode_size = text("QR Size:")
-        .size(h2_size);
-
-    let max_width = ((state.size.0 / 2.0).min(state.size.1 - 300.0)).min(600.0);
-    let slider = slider(80.0..=max_width, state.qr_code_size, Message::UpdateQrCodeSize)
-        .width(iced::Length::Fixed(100.0));
-
     match state.port_buffer.parse::<u16>() {
         Err(_) => port_text = port_text.style(|theme, status| {
             iced::widget::text_input::Style {
@@ -97,7 +89,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
     .spacing(10)
     .width(iced::Length::Fill)
     .align_x(iced::alignment::Horizontal::Center);
-    let is_empty = {
+    {
     let file_path = state.file_path.lock().unwrap();
 
     if !file_path.is_empty() {
@@ -205,7 +197,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
 
     let left = container(left)
         .style(modify_style(0.8))
-        .width(iced::Length::FillPortion(1))
+        .width(iced::Length::Fill)
         .height(iced::Length::FillPortion(1))
         .padding(5);
     
@@ -232,18 +224,18 @@ pub fn view(state: &State) -> iced::Element<Message> {
     ]
     .padding(5)
     .spacing(10)
-    .width(iced::Length::Fill)
+    .width(iced::Length::Fixed(300.0))
     .height(iced::Length::Fill)
     .align_x(iced::alignment::Horizontal::Center);
 
     let right = container(right)
         .style(modify_style(0.8))
-        .width(iced::Length::FillPortion(1))
+        .width(iced::Length::Fixed(300.0))
         .height(iced::Length::FillPortion(1))
         .padding(5);
 
     // footer
-    let mut footer = row![
+    let footer = row![
         settings_text,
         theme_button,
         port_title,
@@ -251,13 +243,8 @@ pub fn view(state: &State) -> iced::Element<Message> {
     ]
     .spacing(20)
     .padding(10)
-    .width(iced::Length::Fixed(1200.0))
+    .width(iced::Length::Fixed(1000.0))
     .align_y(iced::alignment::Vertical::Center);
-
-    if !is_empty {
-        footer = footer.push(text_qrcode_size);
-        footer = footer.push(slider);
-    }
 
     let footer = container(footer)
         .style(modify_style(0.8))
@@ -268,7 +255,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
     let mut main = row![
         left
     ]
-    .width(iced::Length::Fixed(1200.0))
+    .width(iced::Length::Fixed(1000.0))
     .height(iced::Length::Fill)
     .padding(5)
     .spacing(5);

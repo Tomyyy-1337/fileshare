@@ -20,7 +20,6 @@ pub struct State {
     pub server_handle: Option<iced::task::Handle>,
     pub port_buffer: String,
     pub local_host: bool,
-    pub qr_code_size: f32,
     pub size: (f32, f32),
 }
 
@@ -40,7 +39,6 @@ impl Default for State {
             server_handle: None,
             port_buffer: "8080".to_string(),
             local_host: true,
-            qr_code_size: 300.0,
             size: (0.0, 0.0),
         }
     }
