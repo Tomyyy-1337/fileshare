@@ -3,7 +3,7 @@ use copypasta::{ClipboardContext, ClipboardProvider};
 use rfd::FileDialog;
 use iced::Task;
 
-use crate::{server::server, state::State};
+use crate::{server::server, state::{FileInfo, State}};
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -122,7 +122,7 @@ fn add_selected_files_list(state: &mut State, paths: Vec<PathBuf>) -> Task<Messa
 }
 
 fn show_in_explorer(state: &mut State, indx: usize) {
-    if let Some((path, _)) = &state.file_path.lock().unwrap().get(indx) {
+    if let Some(FileInfo { path, .. }) = &state.file_path.lock().unwrap().get(indx) {
         Command::new( "explorer" )
             .arg("/select,")
             .arg(path)
@@ -132,7 +132,7 @@ fn show_in_explorer(state: &mut State, indx: usize) {
 }
 
 fn open_in_explorer(state: &mut State, indx: usize) {
-    if let Some((path, _)) = &state.file_path.lock().unwrap().get(indx) {
+    if let Some(FileInfo { path, .. }) = &state.file_path.lock().unwrap().get(indx) {
         Command::new( "explorer" )
             .arg(path)
             .spawn( )
@@ -181,12 +181,19 @@ fn add_files_from_path(state: &mut State, path: PathBuf) -> Task<Message> {
 
     let mut task = Task::none();
     for file in paths {
-        if state.file_path.lock().unwrap().iter().find(|(p, _)| p == &file).is_some() {
-            continue;
+        {
+            let mut file_path = state.file_path.lock().unwrap();
+            if file_path.iter().find(| FileInfo { path, .. }| path == &file).is_some() {
+                continue;
+            }
+            let file_size = file.metadata().unwrap().len() as usize;
+            file_path.push( FileInfo { 
+                path: file.clone(),
+                size: file_size,
+                download_count: 0,
+            });
+            file_path.sort_by(|a, b| a.path.file_name().cmp(&b.path.file_name()));
         }
-        let file_size = file.metadata().unwrap().len() as usize;
-        state.file_path.lock().unwrap().push((file, file_size));
-        state.file_path.lock().unwrap().sort();
         if state.server_handle.is_none() {
             task = start_server(state);
         }
@@ -199,7 +206,7 @@ fn start_server(state: &mut State) -> Task<Message> {
     if state.file_path.lock().unwrap().is_empty() {
         return Task::none();
     }
-    let task =  Task::perform(server(state.ip_adress, state.port, state.file_path.clone(), state.num_send_files.clone()), |_result| Message::ServerStopped);
+    let task =  Task::perform(server(state.ip_adress, state.port, state.file_path.clone()), |_result| Message::ServerStopped);
     let (task, handle) = Task::abortable(task);
     state.server_handle = Some(handle);
     task

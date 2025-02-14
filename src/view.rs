@@ -1,10 +1,12 @@
+use std::usize;
+
 use iced::{theme::palette, widget::{self, button, column, container, row, scrollable, slider, text, text_input::default, Theme}};
-use crate::{state::State, update::Message};
+use crate::{server::size_string, state::{self, State}, update::Message};
 
 pub fn view(state: &State) -> iced::Element<Message> {
     let h1_size = 30;
     let h2_size = 20;
-    let p_size = 15;
+    let p_size = 13;
      
     let settings_text = text!("Theme:")
         .size(h2_size);
@@ -66,7 +68,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
         .size(h2_size);
 
     let max_width = ((state.size.0 / 2.0).min(state.size.1 - 300.0)).min(600.0);
-    let slider = slider(50.0..=max_width, state.qr_code_size, Message::UpdateQrCodeSize)
+    let slider = slider(80.0..=max_width, state.qr_code_size, Message::UpdateQrCodeSize)
         .width(iced::Length::Fixed(100.0));
 
     match state.port_buffer.parse::<u16>() {
@@ -96,6 +98,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
     .width(iced::Length::Fill);
     let is_empty = {
     let file_path = state.file_path.lock().unwrap();
+
     if !file_path.is_empty() {
         let shared_files_text = match file_path.len() {
             1 => "Shared File:".to_owned(),
@@ -105,18 +108,19 @@ pub fn view(state: &State) -> iced::Element<Message> {
         let uploaded_files = text(shared_files_text)
             .size(h1_size);
 
-        let text_num_send_files = text!("Downloads: {}", state.num_send_files.lock().unwrap())
+        let text_num_send_files = text!("Total Downloads: {}", file_path.iter().map(|f| f.download_count).sum::<usize>())
             .size(h2_size); 
 
         let mut files_list = column![]
             .spacing(10)
             .padding(12);
 
-        for (i, (path, _size)) in file_path.iter().cloned().enumerate() {
+        for (i, state::FileInfo{path, download_count, size}) in file_path.iter().cloned().enumerate() {
             let text_file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
             let text_file_name = text(text_file_name)
                 .size(h2_size)
-                .height(iced::Length::Fixed(30.0));
+                .height(iced::Length::Fixed(30.0))
+                .width(iced::Length::Fill);
 
             let text_current_file = widget::text_input("", path.to_str().unwrap())
                 .size(p_size)
@@ -130,9 +134,21 @@ pub fn view(state: &State) -> iced::Element<Message> {
                 .on_press(Message::ShowInExplorer(i))
                 .width(iced::Length::FillPortion(1));
 
-            let delete_button = button("Delete")
+            let delete_button = button("Remove")
                 .on_press(Message::DeleteFile(i))
                 .width(iced::Length::FillPortion(1));
+
+            let text_download_count = text!("Downloads: {}", download_count)
+                .size(p_size)
+                .width(iced::Length::Shrink);
+
+            let text_size = text!("{}", size_string(&size))
+                .size(p_size)
+                .width(iced::Length::Shrink);
+
+            let meta_col = column![text_size, text_download_count]
+                .align_x(iced::alignment::Horizontal::Right)
+                .width(iced::Length::Shrink);
 
             let row = row![
                 open_button,
@@ -140,9 +156,14 @@ pub fn view(state: &State) -> iced::Element<Message> {
                 delete_button
             ]
             .spacing(5);
+
+            let title_row = row![text_file_name, meta_col]
+                .spacing(5)
+                .width(iced::Length::Fill)
+                .align_y(iced::alignment::Vertical::Center);
             
             let col = column![
-                text_file_name,
+                title_row,
                 text_current_file,
                 row
             ]
@@ -157,7 +178,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
         let files_list = container(files_list)
             .style(modify_style(1.0));
     
-        let delete_all_button = button("Delete All")
+        let delete_all_button = button("Remove All")
             .on_press(Message::DeleteAllFiles)
             .width(iced::Length::FillPortion(1));
         

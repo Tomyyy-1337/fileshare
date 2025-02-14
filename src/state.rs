@@ -3,17 +3,23 @@ use local_ip_address::local_ip;
 use iced::widget;
 use qrcode_generator::QrCodeEcc;
 
+#[derive(Debug, Clone)]
+pub struct FileInfo {
+    pub path: PathBuf,
+    pub size: usize,
+    pub download_count: usize,
+}
+
 pub struct State {
     pub dark_mode: bool,
     pub ip_adress: IpAddr,
     pub ip_adress_public: Option<IpAddr>,
     pub port: u16,
-    pub file_path: Arc<Mutex<Vec<(PathBuf, usize)>>>,
+    pub file_path: Arc<Mutex<Vec<FileInfo>>>,
     pub qr_code: widget::image::Handle,
     pub server_handle: Option<iced::task::Handle>,
     pub port_buffer: String,
     pub local_host: bool,
-    pub num_send_files: Arc<Mutex<usize>>,
     pub qr_code_size: f32,
     pub size: (f32, f32),
 }
@@ -34,7 +40,6 @@ impl Default for State {
             server_handle: None,
             port_buffer: "8080".to_string(),
             local_host: true,
-            num_send_files: Arc::new(Mutex::new(0)),
             qr_code_size: 300.0,
             size: (0.0, 0.0),
         }
