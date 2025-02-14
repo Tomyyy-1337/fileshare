@@ -271,7 +271,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
     .width(iced::Length::Fixed(1200.0))
     .height(iced::Length::Fill)
     .padding(5)
-    .spacing(10);
+    .spacing(5);
     
     if state.server_handle.is_some() {
         main = main.push(right);
