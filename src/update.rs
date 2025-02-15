@@ -1,9 +1,9 @@
 use std::{path::PathBuf, process::Command, thread::sleep};
 use copypasta::{ClipboardContext, ClipboardProvider};
 use rfd::FileDialog;
-use iced::Task;
+use iced::{stream::channel, Task};
 
-use crate::{server::server, state::{FileInfo, State}};
+use crate::{server::{self, server}, state::{FileInfo, State}};
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -12,7 +12,6 @@ pub enum Message {
     None,
     OpenInBrowser,
     FileDropped(std::path::PathBuf),
-    ServerStopped,
     DeleteFile(usize),
     OpenFile(usize),
     ShowInExplorer(usize),
@@ -23,6 +22,7 @@ pub enum Message {
     PublicIp,
     ChangePort,
     PortTextUpdate(String),
+    Downloaded { index: usize },
     Resize(f32, f32),
 }
 
@@ -31,7 +31,6 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         Message::ToggleDarkMode                => state.dark_mode = !state.dark_mode,
         Message::CopyUrl                       => copy_url_to_clipboard(state),
         Message::FileDropped(path)    => return add_files_from_path(state, path),
-        Message::ServerStopped                 => state.server_handle = None,
         Message::OpenInBrowser                 => webbrowser::open(&state.create_url_string()).unwrap(),
         Message::DeleteFile(indx)       => delete_file(state, indx),        
         Message::OpenFile(indx)         => open_in_explorer(state, indx),
@@ -43,6 +42,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         Message::PublicIp                      => public_mode(state),
         Message::ChangePort                    => return change_port(state),
         Message::PortTextUpdate(port)  => update_port_text_field(state, port),
+        Message::Downloaded { index }   => state.file_path.lock().unwrap()[index].download_count += 1,
         Message::Resize(width, height)=> state.size = (width as f32, height as f32),
         Message::None => {}
     }
@@ -204,7 +204,22 @@ fn start_server(state: &mut State) -> Task<Message> {
     if state.file_path.lock().unwrap().is_empty() {
         return Task::none();
     }
-    let task =  Task::perform(server(state.ip_adress, state.port, state.file_path.clone()), |_result| Message::ServerStopped);
+    let filepaths = state.file_path.clone();
+    let ip_adress = state.ip_adress;
+    let port = state.port;
+    let stream = channel(10, move |tx: futures::channel::mpsc::Sender<_>| {
+        let tx = tx.clone();
+        async move {
+            server(ip_adress, port, filepaths, tx).await
+        }
+    });
+
+    let task = Task::run(stream, |server_message| {
+        match server_message {
+            server::ServerMessage::Downloaded { index } => Message::Downloaded { index },
+        }
+    });
+
     let (task, handle) = Task::abortable(task);
     state.server_handle = Some(handle);
     task

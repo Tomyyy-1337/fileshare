@@ -5,16 +5,20 @@ use tokio::fs::File;
 use tokio_util::io::ReaderStream;
 use warp::hyper::Body;
 use tera::Tera;
-use futures::stream::Stream;
+use futures::{channel::mpsc::Sender, stream::Stream};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use crate::state;
 
-pub async fn server(ip: IpAddr, port: u16, path: Arc<Mutex<Vec<state::FileInfo>>>) {
+pub enum ServerMessage {
+    Downloaded { index: usize },
+}
+
+pub async fn server(ip: IpAddr, port: u16, path: Arc<Mutex<Vec<state::FileInfo>>>, tx: Sender<ServerMessage>) {
     let html_route = create_index_route(path.clone());
     let update_route = create_refresh_route(path.clone());
     let static_route = create_static_route();
-    let download_route = create_download_route(path);
+    let download_route = create_download_route(path, tx);
 
     let routes = html_route
         .or(update_route)
@@ -95,8 +99,9 @@ pub fn size_string(size: &usize) -> String {
     }
 }
 
-fn create_download_route(files: Arc<Mutex<Vec<state::FileInfo>>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+fn create_download_route(files: Arc<Mutex<Vec<state::FileInfo>>>, tx: Sender<ServerMessage>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let download_route = warp::path!("download" / usize).and_then(move |index| {
+        let tx = tx.clone();
         let files = files.clone();
         async move {
             let file_info = {
@@ -115,7 +120,7 @@ fn create_download_route(files: Arc<Mutex<Vec<state::FileInfo>>>) -> impl Filter
 
             let file = File::open(&path).await.map_err(|_| warp::reject::not_found())?;
             let stream = ReaderStream::new(file);
-            let counting_stream = CountingStream::new(stream, files, index);
+            let counting_stream = CountingStream::new(stream, tx, index);
             let body = Body::wrap_stream(counting_stream);
             let response = Response::new(body);
 
@@ -134,13 +139,13 @@ fn create_download_route(files: Arc<Mutex<Vec<state::FileInfo>>>) -> impl Filter
 
 struct CountingStream<S> {
     inner: S,
-    files: Arc<Mutex<Vec<state::FileInfo>>>,
+    tx: Sender<ServerMessage>,
     index: usize,
 }
 
 impl<S> CountingStream<S> {
-    fn new(inner: S, files: Arc<Mutex<Vec<state::FileInfo>>>, index: usize) -> Self {
-        CountingStream { inner, files, index }
+    fn new(inner: S, tx: Sender<ServerMessage>, index: usize) -> Self {
+        CountingStream { inner, tx, index }
     }
 }
 
@@ -153,7 +158,13 @@ where
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match Pin::new(&mut self.inner).poll_next(cx) {
             Poll::Ready(None) => {
-                self.files.lock().unwrap().get_mut(self.index).unwrap().download_count += 1;
+                let index = self.index;
+                loop {
+                    match self.tx.try_send(ServerMessage::Downloaded { index }) {
+                        Ok(_) => break,
+                        Err(_) => continue,
+                    }
+                }
                 Poll::Ready(None)
             }
             other => other,
