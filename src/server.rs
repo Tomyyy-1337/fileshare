@@ -1,4 +1,4 @@
-use std::{net::IpAddr, path::Path, sync::{Arc, Mutex}};
+use std::{net::IpAddr, path::Path, sync::{Arc, Mutex, RwLock}};
 use serde::Serialize;
 use warp::{http::header, reply::Response, Filter};
 use tokio::fs::File;
@@ -10,20 +10,36 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use crate::state;
 
+#[derive(Debug, Clone)]
 pub enum ServerMessage {
     Downloaded { index: usize },
+    DownloadRequestedFrom { ip: IpAddr },
+    ClientConnected { ip: IpAddr },
 }
 
-pub async fn server(ip: IpAddr, port: u16, path: Arc<Mutex<Vec<state::FileInfo>>>, tx: Sender<ServerMessage>) {
+pub async fn server(ip: IpAddr, port: u16, path: Arc<RwLock<Vec<state::FileInfo>>>, tx: Sender<ServerMessage>) {
     let html_route = create_index_route(path.clone());
     let update_route = create_refresh_route(path.clone());
     let static_route = create_static_route();
-    let download_route = create_download_route(path, tx);
+    let download_route = create_download_route(path, tx.clone());
+    
+    let tx = Arc::new(Mutex::new(tx.clone()));
 
     let routes = html_route
         .or(update_route)
         .or(static_route)
-        .or(download_route);
+        .or(download_route)
+        .and(warp::addr::remote())
+        .map(move |reply, addr: Option<std::net::SocketAddr>| {
+            if let Some(socket_adress) = addr {
+                let ip = match socket_adress.ip() {
+                    std::net::IpAddr::V4(ip) => IpAddr::V4(ip),
+                    std::net::IpAddr::V6(ip) => IpAddr::V6(ip),
+                };
+                tx.lock().unwrap().try_send(ServerMessage::ClientConnected { ip }).unwrap();
+            }
+            reply
+        });
 
     warp::serve(routes)
         .run((ip, port))
@@ -42,7 +58,7 @@ fn create_static_route() -> impl Filter<Extract = impl warp::Reply, Error = warp
         .and(warp::fs::dir("./static"))
 }
 
-fn create_index_route(path: Arc<Mutex<Vec<state::FileInfo>>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+fn create_index_route(path: Arc<RwLock<Vec<state::FileInfo>>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let html_route = warp::path("index")
         .map(move || {
             let path = path.clone();
@@ -59,12 +75,12 @@ struct UpdateData {
     html: String
 }
 
-fn create_refresh_route(path: Arc<Mutex<Vec<state::FileInfo>>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+fn create_refresh_route(path: Arc<RwLock<Vec<state::FileInfo>>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let refresh_route = warp::path("update-content")
         .map(move || {
             let html = fill_template(path.clone(), "file_list.html");
             let response = warp::reply::json(&UpdateData {
-                size: size_string(&path.lock().unwrap().iter().map(|state::FileInfo{size, ..}| size).sum()),
+                size: size_string(&path.read().unwrap().iter().map(|state::FileInfo{size, ..}| size).sum()),
                 html
             });
             warp::reply::with_header(response, "Connection", "close")
@@ -72,18 +88,18 @@ fn create_refresh_route(path: Arc<Mutex<Vec<state::FileInfo>>>) -> impl Filter<E
     refresh_route
 }
 
-fn fill_template(path: Arc<Mutex<Vec<state::FileInfo>>>, template: &'static str) -> String {
+fn fill_template(path: Arc<RwLock<Vec<state::FileInfo>>>, template: &'static str) -> String {
     let tera: Tera = Tera::new("template/*.html").unwrap();
     let mut context = tera::Context::new();
 
-    let files: Vec<FileInfo> = path.lock().unwrap().iter().enumerate().map(|(i, state::FileInfo{path, size, ..})| {
+    let files: Vec<FileInfo> = path.read().unwrap().iter().enumerate().map(|(i, state::FileInfo{path, size, ..})| {
         let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
         let size_string = size_string(size);
         FileInfo { name, index: i, size: size_string }
     }).collect();
     context.insert("files", &files);
 
-    let all_size: usize = path.lock().unwrap().iter().map(|state::FileInfo{size, ..}| size).sum();
+    let all_size: usize = path.read().unwrap().iter().map(|state::FileInfo{size, ..}| size).sum();
     context.insert("all_size", &size_string(&all_size));
 
     tera.render(template, &context).unwrap()
@@ -99,13 +115,14 @@ pub fn size_string(size: &usize) -> String {
     }
 }
 
-fn create_download_route(files: Arc<Mutex<Vec<state::FileInfo>>>, tx: Sender<ServerMessage>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    let download_route = warp::path!("download" / usize).and_then(move |index| {
+fn create_download_route(files: Arc<RwLock<Vec<state::FileInfo>>>, tx: Sender<ServerMessage>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    let tx_arc = Arc::new(Mutex::new(tx.clone()));
+    warp::path!("download" / usize).and_then(move |index| {
         let tx = tx.clone();
         let files = files.clone();
         async move {
             let file_info = {
-                let files = files.lock().unwrap();
+                let files = files.read().unwrap();
                 if index >= files.len() {
                     return Err(warp::reject::not_found());
                 }
@@ -133,8 +150,17 @@ fn create_download_route(files: Arc<Mutex<Vec<state::FileInfo>>>, tx: Sender<Ser
             let response = warp::reply::with_header(response, "Connection", "close");
             Ok::<_, warp::Rejection>(response)
         }
-    });
-    download_route
+    }).and(warp::addr::remote())
+    .map(move |reply, addr: Option<std::net::SocketAddr>| {
+        if let Some(socket_adress) = addr {
+            let ip = match socket_adress.ip() {
+                std::net::IpAddr::V4(ip) => IpAddr::V4(ip),
+                std::net::IpAddr::V6(ip) => IpAddr::V6(ip),
+            };
+            tx_arc.lock().unwrap().try_send(ServerMessage::DownloadRequestedFrom { ip }).unwrap();
+        }
+        reply
+    })
 }
 
 struct CountingStream<S> {

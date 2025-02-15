@@ -3,7 +3,7 @@ use copypasta::{ClipboardContext, ClipboardProvider};
 use rfd::FileDialog;
 use iced::{stream::channel, Task};
 
-use crate::{server::{self, server}, state::{FileInfo, State}};
+use crate::{server::{self, server, ServerMessage}, state::{ClientInfo, FileInfo, State}};
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -22,32 +22,61 @@ pub enum Message {
     PublicIp,
     ChangePort,
     PortTextUpdate(String),
-    Downloaded { index: usize },
     Resize(f32, f32),
+    ServerMessage(server::ServerMessage),
+    ToggleConnectionsView,
 }
 
 pub fn update(state: &mut State, message: Message) -> Task<Message> {
     match message {
-        Message::ToggleDarkMode                => state.dark_mode = !state.dark_mode,
-        Message::CopyUrl                       => copy_url_to_clipboard(state),
-        Message::FileDropped(path)    => return add_files_from_path(state, path),
-        Message::OpenInBrowser                 => webbrowser::open(&state.create_url_string()).unwrap(),
-        Message::DeleteFile(indx)       => delete_file(state, indx),        
-        Message::OpenFile(indx)         => open_in_explorer(state, indx),
-        Message::ShowInExplorer(indx)   => show_in_explorer(state, indx),
-        Message::SelectFilesExplorer           => return select_files_in_explorer(state),
-        Message::SelectFolderExplorer          => return select_folders_in_explorer(state),
-        Message::DeleteAllFiles                => delete_all_files(state),
-        Message::Localhost                     => localhost_mode(state),
-        Message::PublicIp                      => public_mode(state),
-        Message::ChangePort                    => return change_port(state),
-        Message::PortTextUpdate(port)  => update_port_text_field(state, port),
-        Message::Downloaded { index }   => state.file_path.lock().unwrap()[index].download_count += 1,
+        Message::ToggleDarkMode => state.dark_mode = !state.dark_mode,
+        Message::CopyUrl => copy_url_to_clipboard(state),
+        Message::FileDropped(path) => return add_files_from_path(state, path),
+        Message::OpenInBrowser => webbrowser::open(&state.create_url_string()).unwrap(),
+        Message::DeleteFile(indx) => delete_file(state, indx),        
+        Message::OpenFile(indx) => open_in_explorer(state, indx),
+        Message::ShowInExplorer(indx) => show_in_explorer(state, indx),
+        Message::SelectFilesExplorer => return select_files_in_explorer(state),
+        Message::SelectFolderExplorer => return select_folders_in_explorer(state),
+        Message::DeleteAllFiles => delete_all_files(state),
+        Message::Localhost => localhost_mode(state),
+        Message::PublicIp => public_mode(state),
+        Message::ChangePort => return change_port(state),
+        Message::PortTextUpdate(port) => update_port_text_field(state, port),
         Message::Resize(width, height)=> state.size = (width as f32, height as f32),
+        Message::ToggleConnectionsView => state.show_connections = !state.show_connections,
+        Message::ServerMessage(ServerMessage::Downloaded { index }) => file_downloaded(state, index),
+        Message::ServerMessage(ServerMessage::ClientConnected { ip }) => return client_connected(state, ip),
+        Message::ServerMessage(ServerMessage::DownloadRequestedFrom { ip }) => download_requested_from(state, ip),
         Message::None => {}
     }
 
     Task::none()
+}
+
+fn download_requested_from(state: &mut State, ip: std::net::IpAddr) {
+    state.clients.entry(ip).and_modify(|client| {
+        client.download_count += 1;
+        client.last_connection = std::time::Instant::now();
+    });
+}
+
+fn file_downloaded(state: &mut State, index: usize) {
+    state.transmitted_data += state.file_path.read().unwrap()[index].size;
+    state.file_path.write().unwrap()[index].download_count += 1;
+}
+
+fn client_connected(state: &mut State, ip: std::net::IpAddr) -> Task<Message> {
+    state.clients
+        .entry(ip)
+        .and_modify(|client| client.last_connection = std::time::Instant::now())
+        .or_insert(ClientInfo { download_count: 0, last_connection: std::time::Instant::now() });
+
+    Task::perform(async_sleep(std::time::Duration::from_secs(4)), |_| Message::None)
+}
+
+async fn async_sleep(duration: std::time::Duration) {
+    tokio::time::sleep(duration).await;
 }
 
 fn update_port_text_field(state: &mut State, port: String) {
@@ -120,7 +149,7 @@ fn add_selected_files_list(state: &mut State, paths: Vec<PathBuf>) -> Task<Messa
 }
 
 fn show_in_explorer(state: &mut State, indx: usize) {
-    if let Some(FileInfo { path, .. }) = &state.file_path.lock().unwrap().get(indx) {
+    if let Some(FileInfo { path, .. }) = &state.file_path.read().unwrap().get(indx) {
         Command::new( "explorer" )
             .arg("/select,")
             .arg(path)
@@ -130,7 +159,7 @@ fn show_in_explorer(state: &mut State, indx: usize) {
 }
 
 fn open_in_explorer(state: &mut State, indx: usize) {
-    if let Some(FileInfo { path, .. }) = &state.file_path.lock().unwrap().get(indx) {
+    if let Some(FileInfo { path, .. }) = &state.file_path.read().unwrap().get(indx) {
         Command::new( "explorer" )
             .arg(path)
             .spawn( )
@@ -139,7 +168,7 @@ fn open_in_explorer(state: &mut State, indx: usize) {
 }
 
 fn delete_all_files(state: &mut State) {
-    state.file_path.lock().unwrap().clear();
+    state.file_path.write().unwrap().clear();
     stop_server(state);
 }
 
@@ -151,8 +180,8 @@ fn stop_server(state: &mut State) {
 }
 
 fn delete_file(state: &mut State, indx: usize) {
-    state.file_path.lock().unwrap().remove(indx);
-    if state.file_path.lock().unwrap().is_empty() {
+    state.file_path.write().unwrap().remove(indx);
+    if state.file_path.read().unwrap().is_empty() {
         stop_server(state);
     } 
 }
@@ -180,7 +209,7 @@ fn add_files_from_path(state: &mut State, path: PathBuf) -> Task<Message> {
     let mut task = Task::none();
     for file in paths {
         {
-            let mut file_path = state.file_path.lock().unwrap();
+            let mut file_path = state.file_path.write().unwrap();
             if file_path.iter().find(| FileInfo { path, .. }| path == &file).is_some() {
                 continue;
             }
@@ -201,7 +230,7 @@ fn add_files_from_path(state: &mut State, path: PathBuf) -> Task<Message> {
 }
 
 fn start_server(state: &mut State) -> Task<Message> {
-    if state.file_path.lock().unwrap().is_empty() {
+    if state.file_path.read().unwrap().is_empty() {
         return Task::none();
     }
     let filepaths = state.file_path.clone();
@@ -215,9 +244,7 @@ fn start_server(state: &mut State) -> Task<Message> {
     });
 
     let task = Task::run(stream, |server_message| {
-        match server_message {
-            server::ServerMessage::Downloaded { index } => Message::Downloaded { index },
-        }
+        Message::ServerMessage(server_message)
     });
 
     let (task, handle) = Task::abortable(task);

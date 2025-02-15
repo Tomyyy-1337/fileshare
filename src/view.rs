@@ -1,7 +1,7 @@
 use std::usize;
 
 use iced::{theme::palette, widget::{self, button, column, container, row, scrollable, text, text_input::default, Theme}};
-use crate::{server::size_string, state::{self, State}, update::Message};
+use crate::{server::size_string, state::{self, ClientInfo, State}, update::Message};
 
 pub fn view(state: &State) -> iced::Element<Message> {
     let h1_size = 30;
@@ -17,7 +17,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
     let image = widget::image(&state.qr_code)
         .width(iced::Length::Fill);
 
-    let url_text = text!("Download URL:")
+    let url_text = text!("Download")
         .size(h1_size);
 
     let url_string =  state.create_url_string();
@@ -31,7 +31,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
     let browser_button = button("Download")
         .on_press(Message::OpenInBrowser);
     
-    let upload_files = text!("Upload File:")
+    let upload_files = text!("Upload File")
         .size(h1_size);
 
     let url_select_button = button("Select File")
@@ -53,6 +53,13 @@ pub fn view(state: &State) -> iced::Element<Message> {
         .on_submit(Message::ChangePort)
         .width(iced::Length::Fixed(100.0));
 
+    let connection_info = match state.show_connections {
+        true => "Hide Connections",
+        false => "Show Connections"
+    };
+    let button_connection_info = button(connection_info)
+        .on_press(Message::ToggleConnectionsView);
+
     let text_mode = match state.local_host {
         true => "Mode: Localhost",
         false => "Mode: Public IP"
@@ -60,7 +67,10 @@ pub fn view(state: &State) -> iced::Element<Message> {
     let text_mode = text(text_mode)
         .size(h2_size);
 
-    let text_connection_info = text("Connection Info:")
+    let text_connection_info = text("Connection Info")
+        .size(h2_size);
+
+    let text_view = text!("Show Connections:")
         .size(h2_size);
 
     match state.port_buffer.parse::<u16>() {
@@ -89,7 +99,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
     .spacing(10)
     .width(iced::Length::Fill);
     {
-    let file_path = state.file_path.lock().unwrap();
+    let file_path = state.file_path.read().unwrap();
 
     if !file_path.is_empty() {
         let shared_files_text = match file_path.len() {
@@ -193,9 +203,85 @@ pub fn view(state: &State) -> iced::Element<Message> {
     }
     }
 
+    let max_width = 1000.0 + if state.show_connections { 280.0 } else { 0.0 };
+
+    let mut main = row![]
+    .width(iced::Length::Fixed(max_width))
+    .height(iced::Length::Fill)
+    .padding(5)
+    .spacing(5);
+
+    if state.show_connections {
+        let text_connections = text!("Connections")
+            .size(h1_size)
+            .align_x(iced::alignment::Horizontal::Center)
+            .width(iced::Length::Fill);
+
+        let mut connections = column![]
+            .spacing(5)
+            .padding(5);
+
+        let ip_heading = text!("IP")
+            .size(h2_size)
+            .width(iced::Length::Fill);
+
+        let count_heading = text!("Downloads")
+            .size(h2_size)
+            .width(iced::Length::Fixed(100.0))
+            .align_x(iced::alignment::Horizontal::Right);
+
+        let heading = row![ip_heading, count_heading]
+            .spacing(5)
+            .padding(5);
+
+        for (ip, ClientInfo {download_count, last_connection}) in state.clients.iter() {
+            let is_active = last_connection.elapsed().as_secs() < 4;
+
+            let text_ip = text!("{}", ip.to_string())
+                .size(p_size)
+                .width(iced::Length::Fill)
+                .color(if is_active { iced::Color::from_rgb8(0, 255, 0) } else { iced::Color::from_rgb8(255, 0, 0) });
+
+            let text_count = text!("{}", download_count)
+                .size(p_size)
+                .width(iced::Length::Fixed(50.0))
+                .align_x(iced::alignment::Horizontal::Right);
+
+            let conection = row![text_ip, text_count];
+
+            connections = connections.push(conection);
+        }
+
+        let connections = scrollable(connections)
+            .height(iced::Length::Fill);
+
+        let connections = container(connections)
+            .width(iced::Length::Fill)
+            .style(modify_style(1.0));
+
+        let text_transmitted_data = text!("Transmitted Data")
+            .size(h2_size);
+
+        let text_transmitted_data_value = text!("{}", size_string(&state.transmitted_data))
+            .size(h2_size);
+
+        let connections = column![text_connections, heading,connections, text_transmitted_data, text_transmitted_data_value]
+            .padding(5)
+            .spacing(5);
+
+        let connections = container(connections)
+            .style(modify_style(0.8))
+            .width(iced::FillPortion(2))
+            .max_width(280)
+            .height(iced::Length::FillPortion(1))
+            .padding(5);
+
+        main = main.push(connections);
+    }  
+
     let left = container(left)
         .style(modify_style(0.8))
-        .width(iced::Length::Fill)
+        .width(iced::Length::FillPortion(3))
         .height(iced::Length::FillPortion(1))
         .padding(5);
     
@@ -238,6 +324,8 @@ pub fn view(state: &State) -> iced::Element<Message> {
         theme_button,
         port_title,
         port_text,
+        text_view,
+        button_connection_info
     ]
     .spacing(20)
     .padding(10)
@@ -249,14 +337,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
         .width(iced::Length::Fill)
         .align_x(iced::alignment::Horizontal::Center);
 
-    // Main
-    let mut main = row![
-        left
-    ]
-    .width(iced::Length::Fixed(1000.0))
-    .height(iced::Length::Fill)
-    .padding(5)
-    .spacing(5);
+    main = main.push(left);
     
     if state.server_handle.is_some() {
         main = main.push(right);

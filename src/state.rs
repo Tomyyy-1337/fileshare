@@ -1,4 +1,4 @@
-use std::{net::IpAddr, path::PathBuf, sync::{Arc, Mutex}};
+use std::{collections::HashMap, net::IpAddr, path::PathBuf, sync::{Arc, RwLock}};
 use local_ip_address::local_ip;
 use iced::widget;
 use qrcode_generator::QrCodeEcc;
@@ -10,17 +10,25 @@ pub struct FileInfo {
     pub download_count: usize,
 }
 
+pub struct ClientInfo {
+    pub download_count: usize,
+    pub last_connection: std::time::Instant,
+}
+
 pub struct State {
     pub dark_mode: bool,
     pub ip_adress: IpAddr,
     pub ip_adress_public: Option<IpAddr>,
     pub port: u16,
-    pub file_path: Arc<Mutex<Vec<FileInfo>>>,
+    pub file_path: Arc<RwLock<Vec<FileInfo>>>,
     pub qr_code: widget::image::Handle,
     pub server_handle: Option<iced::task::Handle>,
     pub port_buffer: String,
     pub local_host: bool,
     pub size: (f32, f32),
+    pub clients: HashMap<IpAddr, ClientInfo>,
+    pub show_connections: bool,
+    pub transmitted_data: usize,
 }
 
 impl Default for State {
@@ -34,12 +42,15 @@ impl Default for State {
             ip_adress: ip,
             ip_adress_public: ip_public,
             port: 8080,
-            file_path: Arc::new(Mutex::new(Vec::new())),
+            file_path: Arc::new(RwLock::new(Vec::new())),
             qr_code,
             server_handle: None,
             port_buffer: "8080".to_string(),
             local_host: true,
             size: (0.0, 0.0),
+            clients: HashMap::new(),
+            show_connections: false,
+            transmitted_data: 0,
         }
     }
 }

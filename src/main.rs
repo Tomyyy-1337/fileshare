@@ -1,4 +1,4 @@
-#![windows_subsystem = "windows"]
+// #![windows_subsystem = "windows"]
 
 use std::sync::Arc;
 
@@ -22,8 +22,8 @@ fn main() -> iced::Result {
         .subscription(subscription)
         .window(iced::window::Settings {
             resizable: true,
-            size: (Size::new(800.0, 580.0)),
-            min_size: Some(Size::new(620.0, 480.0)),
+            size: (Size::new(820.0, 580.0)),
+            min_size: Some(Size::new(820.0, 480.0)),
             ..iced::window::Settings::default()
         })
         .theme(|state| match state.dark_mode {
