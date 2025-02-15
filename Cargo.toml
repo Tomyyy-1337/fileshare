@@ -1,6 +1,6 @@
 [package]
 name = "fileshare"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 
 [dependencies]
@@ -8,16 +8,23 @@ iced = {version = "0.13.1", features = ["tokio", "image", "advanced"]}
 ipconfig = "0.3.2"
 local-ip-address = "0.6.3"
 qrcode-generator = "5.0.0"
-warp = { version = "0.3.7", default-features = false, features = ["multipart", "websocket", "tls", "compression", "compression-brotli", "compression-gzip"] }
+warp = { version = "0.3.7", default-features = false, features = [] }
 copypasta = "0.10.1"
 webbrowser = "1.0.3"
 rfd = "0.15.2"
 memmap2 = "0.9.5"
-tokio = { version = "1.43.0", features = ["full"] }
+tokio = { version = "1.43.0", features = [] }
 tokio-util = "0.7.13"
-zip = "2.2.2"
 futures = "0.3.31"
 tera = "1.10.0"
 serde = { version = "1.0.217", features = ["derive"] }
 public-ip-address = { version = "0.3", features = ["blocking"] }
 bytes = "1.10.0"
+
+[profile.optimized]
+inherits = "release"
+opt-level = 3       
+lto = true          
+codegen-units = 1   
+panic = 'abort'   
+strip = true   
