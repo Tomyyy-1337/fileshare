@@ -1,6 +1,6 @@
 # File share
 
-![Imgur](https://imgur.com/a/QzfFwMf)
+[Imgur](https://i.imgur.com/qRhAIr8.png)
 
 Run with
 ```
