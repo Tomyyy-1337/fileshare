@@ -14,6 +14,7 @@ use crate::state;
 pub enum ServerMessage {
     Downloaded { index: usize , ip: IpAddr },
     ClientConnected { ip: IpAddr },
+    DownloadActive { ip: IpAddr },
 }
 
 pub async fn server(
@@ -168,11 +169,12 @@ struct CountingStream<S> {
     tx: Sender<ServerMessage>,
     index: usize,
     ip: IpAddr,
+    counter: usize,
 }
 
 impl<S> CountingStream<S> {
     fn new(inner: S, tx: Sender<ServerMessage>, index: usize, ip: IpAddr) -> Self {
-        CountingStream { inner, tx, index, ip }
+        CountingStream { inner, tx, index, ip, counter: 0 }
     }
 }
 
@@ -194,6 +196,14 @@ where
                     }
                 }
                 Poll::Ready(None)
+            }
+            poll @ Poll::Ready(_) => {
+                self.counter = (self.counter + 1) % 1024;
+                if self.counter == 0 {
+                    let ip = self.ip;
+                    let _ = self.tx.try_send(ServerMessage::DownloadActive { ip });
+                }
+                poll
             }
             other => other,
         }

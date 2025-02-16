@@ -223,26 +223,20 @@ pub fn view(state: &State) -> iced::Element<Message> {
             .spacing(5)
             .padding(5);
 
-        let ip_heading = text!("IP")
-            .size(h2_size)
-            .width(iced::Length::Fill);
-
-        let count_heading = text!("Downloads")
-            .size(h2_size)
-            .width(iced::Length::Fixed(100.0))
-            .align_x(iced::alignment::Horizontal::Right);
-
-        let heading = row![ip_heading, count_heading]
-            .spacing(5)
-            .padding(5);
-
-        for (ip, ClientInfo {download_count, last_connection, download_size}) in state.clients.iter() {
+        for (ip, ClientInfo {download_count, last_connection, download_size, last_download}) in state.clients.iter() {
             let is_active = last_connection.elapsed().as_millis() < 3500;
+            let download_active = last_download.elapsed().as_millis() < 3500;
+
+            let color = match (is_active, download_active) {
+                (true, true) => iced::Color::from_rgb8(0, 0, 255),
+                (true, false) => iced::Color::from_rgb8(0, 255, 0),
+                (false, _) => iced::Color::from_rgb8(255, 0, 0),
+            };
 
             let text_ip = text!("{}", ip.to_string())
                 .size(p_size)
                 .width(iced::Length::Fill)
-                .color(if is_active { iced::Color::from_rgb8(0, 255, 0) } else { iced::Color::from_rgb8(255, 0, 0) });
+                .color(color);
 
             let text_count = column![
                 text!("{} Downloads", download_count).size(11),
@@ -264,13 +258,37 @@ pub fn view(state: &State) -> iced::Element<Message> {
             .width(iced::Length::Fill)
             .style(modify_style(0.6));
 
-        let text_transmitted_data = text!("Transmitted Data")
+        let stats_text = text!("Stats")
             .size(h2_size);
 
-        let text_transmitted_data_value = text!("{}", size_string(&state.transmitted_data))
-            .size(h2_size);
+        let name_column = column![
+            text("Active Downloads:").size(p_size).width(iced::Length::Shrink),
+            text("Active Clients:").size(p_size).width(iced::Length::Shrink),
+            text("Total Clients:").size(p_size).width(iced::Length::Shrink),
+            text("Total Downloads:").size(p_size).width(iced::Length::Shrink),
+            text("Transmitted Data:").size(p_size).width(iced::Length::Shrink),
+        ]
+        .spacing(5);
 
-        let connections = column![text_connections, heading,connections, text_transmitted_data, text_transmitted_data_value]
+        let active_downloads = state.clients.iter().filter(|(_, ClientInfo {last_download, ..})| last_download.elapsed().as_millis() < 3500).count();
+        let total_downloads = state.clients.iter().map(|(_, ClientInfo {download_count, ..})| download_count).sum::<usize>();
+        let num_clients = state.clients.len();
+        let active_clients = state.clients.iter().filter(|(_, ClientInfo {last_connection, ..})| last_connection.elapsed().as_millis() < 3500).count();
+
+        let value_column = column![
+            text!("{}", active_downloads).size(p_size).align_x(iced::alignment::Horizontal::Right).width(iced::Length::Fill),
+            text!("{}", active_clients).size(p_size).align_x(iced::alignment::Horizontal::Right).width(iced::Length::Fill),
+            text!("{}", num_clients).size(p_size).align_x(iced::alignment::Horizontal::Right).width(iced::Length::Fill),
+            text!("{}", total_downloads).size(p_size).align_x(iced::alignment::Horizontal::Right).width(iced::Length::Fill),
+            text!("{}", size_string(&state.transmitted_data)).size(p_size).align_x(iced::alignment::Horizontal::Right).width(iced::Length::Fill),
+        ]
+        .spacing(5);
+
+        let stats_row = row![name_column, value_column]
+            .spacing(5);
+
+
+        let connections = column![text_connections, connections, stats_text, stats_row]
             .padding(5)
             .spacing(5);
 
