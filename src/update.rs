@@ -23,9 +23,9 @@ pub enum Message {
     ChangePort,
     PortTextUpdate(String),
     Resize(f32, f32),
-    ServerMessage(server::ServerMessage),
     ToggleConnectionsView,
     BlockExternalConnections(bool),
+    ServerMessage(server::ServerMessage),
 }
 
 pub fn update(state: &mut State, message: Message) -> Task<Message> {

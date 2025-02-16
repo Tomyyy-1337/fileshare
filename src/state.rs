@@ -3,6 +3,8 @@ use local_ip_address::local_ip;
 use iced::widget;
 use qrcode_generator::QrCodeEcc;
 
+use crate::view::CONNECTION_PANE_WIDTH;
+
 #[derive(Debug, Clone)]
 pub struct FileInfo {
     pub path: PathBuf,
@@ -52,7 +54,7 @@ impl Default for State {
             local_host: true,
             size: (0.0, 0.0),
             clients: HashMap::new(),
-            show_connections: false,
+            show_connections: true,
             transmitted_data: 0,
             block_external_connections: Arc::new(AtomicBool::new(true)),
         }
@@ -72,7 +74,7 @@ impl State {
     }
 
     pub fn create_qr_code(url: &String) -> widget::image::Handle {
-        let size = 220;
+        let size = CONNECTION_PANE_WIDTH as usize - 10;
         let data = qrcode_generator::to_image(url, QrCodeEcc::Quartile, size).expect("Couldn't generate QR code.")
             .into_iter()
             .flat_map(|pixel| {

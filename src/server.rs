@@ -91,7 +91,7 @@ fn create_refresh_route(path: Arc<RwLock<Vec<state::FileInfo>>>) -> impl Filter<
         .map(move || {
             let html = fill_template(path.clone(), "file_list.html");
             let response = warp::reply::json(&UpdateData {
-                size: size_string(&path.read().unwrap().iter().map(|state::FileInfo{size, ..}| size).sum()),
+                size: size_string(path.read().unwrap().iter().map(|state::FileInfo{size, ..}| size).sum()),
                 html
             });
             response
@@ -105,24 +105,24 @@ fn fill_template(path: Arc<RwLock<Vec<state::FileInfo>>>, template: &'static str
 
     let files: Vec<FileInfo> = path.read().unwrap().iter().enumerate().map(|(i, state::FileInfo{path, size, ..})| {
         let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
-        let size_string = size_string(size);
+        let size_string = size_string(*size);
         FileInfo { name, index: i, size: size_string }
     }).collect();
     context.insert("files", &files);
 
     let all_size: usize = path.read().unwrap().iter().map(|state::FileInfo{size, ..}| size).sum();
-    context.insert("all_size", &size_string(&all_size));
+    context.insert("all_size", &size_string(all_size));
 
     tera.render(template, &context).unwrap()
 }
 
-pub fn size_string(size: &usize) -> String {
+pub fn size_string(size: usize) -> String {
     match size {
-        s if *s < 1024 => format!("{} B", s),
-        s if *s < 1024 * 1024 => format!("{:.1} KB", *s as f64 / 1024.0),
-        s if *s < 1024 * 1024 * 1024 => format!("{:.1} MB", *s as f64 / 1024.0 / 1024.0),
-        s if *s < 1024 * 1024 * 1024 * 1024 => format!("{:.1} GB", *s as f64 / 1024.0 / 1024.0 / 1024.0),
-        s => format!("{:.1} TB", *s as f64 / 1024.0 / 1024.0 / 1024.0 / 1024.0),
+        s if s < 1000 => format!("{} B", s),
+        s if s < 1024 * 1000 => format!("{:.1} KB", s as f64 / 1024.0),
+        s if s < 1024 * 1024 * 1000 => format!("{:.1} MB", s as f64 / 1024.0 / 1024.0),
+        s if s < 1024 * 1024 * 1024 * 1000 => format!("{:.1} GB", s as f64 / 1024.0 / 1024.0 / 1024.0),
+        s => format!("{:.1} TB", s as f64 / 1024.0 / 1024.0 / 1024.0 / 1024.0),
     }
 }
 
