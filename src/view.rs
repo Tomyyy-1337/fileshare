@@ -1,5 +1,3 @@
-use std::usize;
-
 use iced::{theme::palette, widget::{self, button, column, container, row, scrollable, text, text_input::default, Theme}};
 use crate::{server::size_string, state::{self, ClientInfo, State}, update::Message};
 
@@ -58,7 +56,8 @@ pub fn view(state: &State) -> iced::Element<Message> {
         false => "Show Connections"
     };
     let button_connection_info = button(connection_info)
-        .on_press(Message::ToggleConnectionsView);
+        .on_press(Message::ToggleConnectionsView)
+        .width(iced::Length::Fixed(160.0));
 
     let text_mode = match state.local_host {
         true => "Mode: Localhost",
@@ -70,7 +69,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
     let text_connection_info = text("Connection Info")
         .size(h2_size);
 
-    let text_view = text!("Show Connections:")
+    let text_view = text!("Connections:")
         .size(h2_size);
 
     match state.port_buffer.parse::<u16>() {
@@ -103,8 +102,8 @@ pub fn view(state: &State) -> iced::Element<Message> {
 
     if !file_path.is_empty() {
         let shared_files_text = match file_path.len() {
-            1 => "Shared File:".to_owned(),
-            _ => format!("Shared Files [{}]:", file_path.len())   
+            1 => "Shared File".to_owned(),
+            _ => format!("Shared Files [{}]", file_path.len())   
         };
 
         let uploaded_files = text(shared_files_text)
@@ -182,7 +181,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
             .on_press(Message::DeleteAllFiles)
             .width(iced::Length::FillPortion(1));
         
-        let text_new_file = text!("Select new File:")
+        let text_new_file = text!("Select new File")
             .size(h2_size);
         
         left = left.push(text_new_file);

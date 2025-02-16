@@ -23,7 +23,7 @@ fn main() -> iced::Result {
         .window(iced::window::Settings {
             resizable: true,
             size: (Size::new(820.0, 580.0)),
-            min_size: Some(Size::new(820.0, 480.0)),
+            min_size: Some(Size::new(780.0, 480.0)),
             ..iced::window::Settings::default()
         })
         .theme(|state| match state.dark_mode {
