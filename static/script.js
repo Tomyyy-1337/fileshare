@@ -2,6 +2,7 @@ let downloadsActive = false;
 let numDownloads = 0;
 let numDownloadsCompleted = 0;
 let allSize = '';
+let previousHtml = "";
 
 function scheduleContentUpdate() {
     setTimeout(() => {
@@ -72,6 +73,10 @@ async function updateContent() {
         const response = await fetch('/update-content');
         const json = await response.json();
         let html = json.html;
+        if (previousHtml == html) {
+            return;
+        }
+        previousHtml = html;
         let size = json.size;
         allSize = size;
         document.getElementById('fileList').innerHTML = html;
