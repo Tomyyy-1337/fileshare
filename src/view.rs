@@ -271,8 +271,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
 
         let connections = container(connections)
             .style(modify_style(0.8))
-            .width(iced::FillPortion(2))
-            .max_width(280)
+            .width(iced::Length::Fixed(230.0))
             .height(iced::Length::FillPortion(1))
             .padding(5);
 
@@ -314,7 +313,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
 
     let right = container(right)
         .style(modify_style(0.8))
-        .width(iced::Length::Fixed(280.0))
+        .width(iced::Length::Fixed(230.0))
         .height(iced::Length::FillPortion(1))
         .padding(5);
 
