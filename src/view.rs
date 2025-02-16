@@ -175,7 +175,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
             .height(iced::Length::Fill);
 
         let files_list = container(files_list)
-            .style(modify_style(1.0));
+            .style(modify_style(0.6));
     
         let delete_all_button = button("Remove All")
             .on_press(Message::DeleteAllFiles)
@@ -254,7 +254,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
 
         let connections = container(connections)
             .width(iced::Length::Fill)
-            .style(modify_style(1.0));
+            .style(modify_style(0.6));
 
         let text_transmitted_data = text!("Transmitted Data")
             .size(h2_size);
