@@ -138,6 +138,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
             state.clients.entry(ip).and_modify(|client| {
                 client.download_count += 1;
                 client.last_connection = std::time::Instant::now();
+                client.download_size += state.file_path.read().unwrap()[index].size;
             });
         },
 
@@ -145,7 +146,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
             state.clients
                 .entry(ip)
                 .and_modify(|client| client.last_connection = std::time::Instant::now())
-                .or_insert(ClientInfo { download_count: 0, last_connection: std::time::Instant::now() });
+                .or_insert(ClientInfo { download_count: 0, last_connection: std::time::Instant::now(), download_size: 0 });
     
             return Task::perform(async_sleep(std::time::Duration::from_secs(4)), |_| Message::None);
         },

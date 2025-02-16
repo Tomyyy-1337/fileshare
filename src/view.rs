@@ -234,7 +234,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
             .spacing(5)
             .padding(5);
 
-        for (ip, ClientInfo {download_count, last_connection}) in state.clients.iter() {
+        for (ip, ClientInfo {download_count, last_connection, download_size}) in state.clients.iter() {
             let is_active = last_connection.elapsed().as_secs() < 4;
 
             let text_ip = text!("{}", ip.to_string())
@@ -242,10 +242,11 @@ pub fn view(state: &State) -> iced::Element<Message> {
                 .width(iced::Length::Fill)
                 .color(if is_active { iced::Color::from_rgb8(0, 255, 0) } else { iced::Color::from_rgb8(255, 0, 0) });
 
-            let text_count = text!("{}", download_count)
+            let text_count = text!("{} ({})", download_count , size_string(download_size))
                 .size(p_size)
-                .width(iced::Length::Fixed(50.0))
+                .width(iced::Length::Fixed(100.0))
                 .align_x(iced::alignment::Horizontal::Right);
+
 
             let conection = row![text_ip, text_count];
 
