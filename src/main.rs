@@ -24,6 +24,7 @@ fn main() -> iced::Result {
             resizable: true,
             size: (Size::new(900.0, 600.0)),
             min_size: Some(Size::new(780.0, 560.0)),
+            icon: Some(iced::window::icon::from_file("./assets/icon.ico").unwrap()),
             ..iced::window::Settings::default()
         })
         .theme(|state| match state.dark_mode {
