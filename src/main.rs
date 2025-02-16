@@ -36,6 +36,5 @@ fn main() -> iced::Result {
                 danger: iced::Color::from_rgb8(255, 0, 0),
             })))
         })
-        .antialiasing(true)
         .run()
 }

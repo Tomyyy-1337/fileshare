@@ -36,7 +36,7 @@ impl Default for State {
     fn default() -> Self {
         let ip = local_ip().unwrap();
         let ip_public = public_ip_address::perform_lookup(None).map(|lookup|lookup.ip).ok();
-        let qr_code = Self::create_qr_code(&Self::url_string(&ip, 8080), 1200);
+        let qr_code = Self::create_qr_code(&Self::url_string(&ip, 8080));
 
         Self {
             dark_mode: true,
@@ -68,7 +68,8 @@ impl State {
         format!("http://{}:{}/index", ip, port)
     }
 
-    pub fn create_qr_code(url: &String, size: usize) -> widget::image::Handle {
+    pub fn create_qr_code(url: &String) -> widget::image::Handle {
+        let size = 220;
         let data = qrcode_generator::to_image(url, QrCodeEcc::Quartile, size).expect("Couldn't generate QR code.")
             .into_iter()
             .flat_map(|pixel| {

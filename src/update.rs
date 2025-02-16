@@ -49,7 +49,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         Message::PublicIp => {
             if state.ip_adress_public.is_some() {
                 state.local_host = false;
-                state.qr_code = State::create_qr_code(&state.create_url_string(), 1200);
+                state.qr_code = State::create_qr_code(&state.create_url_string());
             } else {
                 state.ip_adress_public = public_ip_address::perform_lookup(None).map(|lookup|lookup.ip).ok();
             }
@@ -57,7 +57,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
 
         Message::Localhost => {
             state.local_host = true;
-            state.qr_code = State::create_qr_code(&state.create_url_string(), 1200);
+            state.qr_code = State::create_qr_code(&state.create_url_string());
         },
         
         Message::DeleteFile(indx) => {
@@ -110,7 +110,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
                 return Task::none();
             }
             state.port = port;
-            state.qr_code = State::create_qr_code(&state.create_url_string(), 1200);
+            state.qr_code = State::create_qr_code(&state.create_url_string());
             if let Some(handle) = &state.server_handle {
                 handle.abort();
                 state.server_handle = None;
