@@ -235,7 +235,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
             .padding(5);
 
         for (ip, ClientInfo {download_count, last_connection, download_size}) in state.clients.iter() {
-            let is_active = last_connection.elapsed().as_secs() < 4;
+            let is_active = last_connection.elapsed().as_millis() < 3500;
 
             let text_ip = text!("{}", ip.to_string())
                 .size(p_size)
