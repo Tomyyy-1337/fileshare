@@ -110,12 +110,9 @@ pub fn view(state: &State) -> iced::Element<Message> {
         let uploaded_files = text(shared_files_text)
             .size(h1_size);
 
-        let text_num_send_files = text!("Total Downloads: {}", file_path.iter().map(|f| f.download_count).sum::<usize>())
-            .size(h2_size); 
-
         let mut files_list = column![]
             .spacing(10)
-            .padding(12);
+            .padding(16);
 
         for (i, state::FileInfo{path, download_count, size}) in file_path.iter().cloned().enumerate() {
             let text_file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
@@ -173,6 +170,7 @@ pub fn view(state: &State) -> iced::Element<Message> {
 
             files_list = files_list.push(col);
         }
+        drop(file_path);
 
         let files_list = scrollable(files_list)
             .height(iced::Length::Fill);
@@ -191,7 +189,6 @@ pub fn view(state: &State) -> iced::Element<Message> {
         left = left.push(url_select_row.width(iced::Length::Fill));
         left = left.push(uploaded_files);
         left = left.push(files_list);
-        left = left.push(text_num_send_files);
         left = left.push(delete_all_button);
         left = left.align_x(iced::alignment::Horizontal::Center);
     } else {
