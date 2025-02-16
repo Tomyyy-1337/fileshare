@@ -26,6 +26,7 @@ pub enum Message {
     ToggleConnectionsView,
     BlockExternalConnections(bool),
     ServerMessage(server::ServerMessage),
+    UpdateSpeed,
 }
 
 pub fn update(state: &mut State, message: Message) -> Task<Message> {
@@ -136,7 +137,11 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         
         Message::Resize(width, height)=> state.size = (width as f32, height as f32),
 
-        Message::AddFiles(path) => return add_files_from_path(state, path),
+        Message::AddFiles(path) => {
+            if let Some(task) = add_files_from_path(state, path) {
+                return task;
+            }
+        },
 
         Message::ServerMessage(ServerMessage::Downloaded { index, ip }) => {
             state.transmitted_data += state.file_path.read().unwrap()[index].size;
@@ -152,14 +157,22 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
             state.clients
                 .entry(ip)
                 .and_modify(|client| client.last_connection = std::time::Instant::now())
-                .or_insert(ClientInfo { download_count: 0, last_connection: std::time::Instant::now(), download_size: 0, last_download: std::time::Instant::now() - std::time::Duration::from_secs(10) });
+                .or_insert(ClientInfo { download_count: 0, last_connection: std::time::Instant::now(), download_size: 0, last_download: std::time::Instant::now() - std::time::Duration::from_secs(10), received_data: 0, speed: 0 });
         },
 
         Message::ServerMessage(ServerMessage::DownloadActive { ip }) => {
             state.clients.entry(ip).and_modify(|client| {
                 client.last_connection = std::time::Instant::now();
                 client.last_download = std::time::Instant::now();
+                client.received_data += 1;
             });
+        },
+
+        Message::UpdateSpeed => {
+            for (_, client) in state.clients.iter_mut() {
+                client.speed = client.received_data * 1024 * 1024;
+                client.received_data = 0;
+            }
         },
 
         Message::None => {}
@@ -191,14 +204,16 @@ fn find_files(path: &PathBuf) -> Vec<PathBuf> {
 }
 
 fn add_files_from_path_list(state: &mut State, paths: Vec<PathBuf>) -> Task<Message> {
-    let mut tasks = Vec::new();
+    let mut return_tasks = Task::none();
     for path in paths {
-        tasks.push(add_files_from_path(state, path));
+        if let Some(task) = add_files_from_path(state, path) {
+            return_tasks = task
+        }
     }
-    Task::batch(tasks)
+    return_tasks
 }
 
-fn add_files_from_path(state: &mut State, path: PathBuf) -> Task<Message> {
+fn add_files_from_path(state: &mut State, path: PathBuf) -> Option<Task<Message>> {
     let paths = find_files(&path);
 
     for file in paths {
@@ -212,9 +227,9 @@ fn add_files_from_path(state: &mut State, path: PathBuf) -> Task<Message> {
         });
     } 
     if state.server_handle.is_none() {
-        return start_server(state);
+        return Some(start_server(state));
     }
-    Task::none()
+    None
 }
 
 fn start_server(state: &mut State) -> Task<Message> {

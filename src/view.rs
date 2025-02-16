@@ -298,7 +298,7 @@ fn footer_pane(state: &State) -> iced::Element<Message> {
     ]
     .spacing(20)
     .padding(10)
-    .width(iced::Length::Fixed(1000.0))
+    .width(iced::Length::Shrink)
     .align_y(iced::alignment::Vertical::Center);
 
     let footer = container(footer)
@@ -336,7 +336,8 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
 
         let text_count = column![
             text!("{} Downloads", client_info.download_count).size(11),
-            text!("of size {}", size_string(client_info.download_size)).size(11)
+            text!("of size {}", size_string(client_info.download_size)).size(11),
+            text!("{}/s", size_string(client_info.speed)).size(11)	
         ]
         .width(iced::Length::Shrink)
         .align_x(iced::alignment::Horizontal::Right);
@@ -362,6 +363,7 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
         text("Active Clients:").size(P_SIZE).width(iced::Length::Shrink),
         text("Total Clients:").size(P_SIZE).width(iced::Length::Shrink),
         text("Total Downloads:").size(P_SIZE).width(iced::Length::Shrink),
+        text("Current Upload:").size(P_SIZE).width(iced::Length::Shrink),
         text("Transmitted Data:").size(P_SIZE).width(iced::Length::Shrink),
     ]
     .spacing(5);
@@ -370,12 +372,14 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
     let total_downloads = state.clients.iter().map(|(_, ClientInfo {download_count, ..})| download_count).sum::<usize>();
     let num_clients = state.clients.len();
     let active_clients = state.clients.iter().filter(|(_, ClientInfo {last_connection, ..})| last_connection.elapsed().as_millis() < 3500).count();
+    let speed_sum = state.clients.iter().map(|(_, ClientInfo {speed, ..})| speed).sum::<usize>();
 
     let value_column = column![
         text!("{}", active_downloads).size(P_SIZE).align_x(iced::alignment::Horizontal::Right).width(iced::Length::Fill),
         text!("{}", active_clients).size(P_SIZE).align_x(iced::alignment::Horizontal::Right).width(iced::Length::Fill),
         text!("{}", num_clients).size(P_SIZE).align_x(iced::alignment::Horizontal::Right).width(iced::Length::Fill),
         text!("{}", total_downloads).size(P_SIZE).align_x(iced::alignment::Horizontal::Right).width(iced::Length::Fill),
+        text!("{}/s", size_string(speed_sum)).size(P_SIZE).align_x(iced::alignment::Horizontal::Right).width(iced::Length::Fill),
         text!("{}", size_string(state.transmitted_data)).size(P_SIZE).align_x(iced::alignment::Horizontal::Right).width(iced::Length::Fill),
     ]
     .spacing(5);

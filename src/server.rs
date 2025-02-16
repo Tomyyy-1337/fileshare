@@ -198,7 +198,7 @@ where
                 Poll::Ready(None)
             }
             poll @ Poll::Ready(_) => {
-                self.counter = (self.counter + 1) % 1024;
+                self.counter = (self.counter + 1) % 256;
                 if self.counter == 0 {
                     let ip = self.ip;
                     let _ = self.tx.try_send(ServerMessage::DownloadActive { ip });

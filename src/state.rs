@@ -17,6 +17,8 @@ pub struct ClientInfo {
     pub download_size: usize,
     pub last_connection: std::time::Instant,
     pub last_download: std::time::Instant,
+    pub received_data: usize,
+    pub speed: usize,
 }
 
 pub struct State {
