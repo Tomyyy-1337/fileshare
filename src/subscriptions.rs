@@ -18,7 +18,7 @@ pub fn subscription(state: &State) -> Subscription<Message> {
 
 fn window_events() -> Subscription<Message> {
     window::events().map(|(_, event)| match event {
-        window::Event::FileDropped(path) => Message::FileDropped(path),
+        window::Event::FileDropped(path) => Message::AddFiles(path),
         window::Event::Resized(Size { width, height }) => Message::Resize(width, height),
         _ => Message::None,
     })

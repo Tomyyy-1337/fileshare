@@ -11,7 +11,7 @@ pub enum Message {
     CopyUrl,
     None,
     OpenInBrowser,
-    FileDropped(std::path::PathBuf),
+    AddFiles(std::path::PathBuf),
     DeleteFile(usize),
     OpenFile(usize),
     ShowInExplorer(usize),
@@ -30,160 +30,135 @@ pub enum Message {
 pub fn update(state: &mut State, message: Message) -> Task<Message> {
     match message {
         Message::ToggleDarkMode => state.dark_mode = !state.dark_mode,
-        Message::CopyUrl => copy_url_to_clipboard(state),
-        Message::FileDropped(path) => return add_files_from_path(state, path),
-        Message::OpenInBrowser => webbrowser::open(&state.create_url_string()).unwrap(),
-        Message::DeleteFile(indx) => delete_file(state, indx),        
-        Message::OpenFile(indx) => open_in_explorer(state, indx),
-        Message::ShowInExplorer(indx) => show_in_explorer(state, indx),
-        Message::SelectFilesExplorer => return select_files_in_explorer(state),
-        Message::SelectFolderExplorer => return select_folders_in_explorer(state),
-        Message::DeleteAllFiles => delete_all_files(state),
-        Message::Localhost => localhost_mode(state),
-        Message::PublicIp => public_mode(state),
-        Message::ChangePort => return change_port(state),
-        Message::PortTextUpdate(port) => update_port_text_field(state, port),
-        Message::Resize(width, height)=> state.size = (width as f32, height as f32),
         Message::ToggleConnectionsView => state.show_connections = !state.show_connections,
-        Message::ServerMessage(ServerMessage::Downloaded { index }) => file_downloaded(state, index),
-        Message::ServerMessage(ServerMessage::ClientConnected { ip }) => return client_connected(state, ip),
-        Message::ServerMessage(ServerMessage::DownloadRequestedFrom { ip }) => download_requested_from(state, ip),
+
+        Message::OpenInBrowser => webbrowser::open(&state.create_url_string()).unwrap(),
+
+        Message::CopyUrl => {
+            let mut ctx = ClipboardContext::new().unwrap();
+            ctx.set_contents(state.create_url_string()).unwrap();
+        }
+        
+        Message::PortTextUpdate(port) => {
+            match port.parse::<u16>() {
+                Err(_) if !port.is_empty() => {},
+                _ => state.port_buffer = port,        
+            }
+        },
+        
+        Message::PublicIp => {
+            if state.ip_adress_public.is_some() {
+                state.local_host = false;
+                state.qr_code = State::create_qr_code(&state.create_url_string(), 1200);
+            } else {
+                state.ip_adress_public = public_ip_address::perform_lookup(None).map(|lookup|lookup.ip).ok();
+            }
+        },
+
+        Message::Localhost => {
+            state.local_host = true;
+            state.qr_code = State::create_qr_code(&state.create_url_string(), 1200);
+        },
+        
+        Message::DeleteFile(indx) => {
+            state.file_path.write().unwrap().remove(indx);
+            if state.file_path.read().unwrap().is_empty() {
+                stop_server(state);
+            } 
+        },        
+
+        Message::DeleteAllFiles => {
+            state.file_path.write().unwrap().clear();
+            stop_server(state);
+        },
+
+        Message::OpenFile(indx) => {
+            if let Some(FileInfo { path, .. }) = &state.file_path.read().unwrap().get(indx) {
+                Command::new( "explorer" )
+                    .arg(path)
+                    .spawn( )
+                    .unwrap( );
+            }
+        },
+
+        Message::ShowInExplorer(indx) => {
+            if let Some(FileInfo { path, .. }) = &state.file_path.read().unwrap().get(indx) {
+                Command::new( "explorer" )
+                    .arg("/select,")
+                    .arg(path)
+                    .spawn( )
+                    .unwrap( );
+            }
+        },
+
+        Message::SelectFolderExplorer => {
+            let paths: Option<Vec<PathBuf>> = FileDialog::new()
+                .add_filter("Any", &["*"])
+                .pick_folders();
+            if let Some(paths) = paths {
+                return add_files_from_path_list(state, paths);
+            }
+        },
+        
+        Message::ChangePort => {
+            let port = state.port_buffer.parse::<u16>();
+            if port.is_err() {
+                return Task::none();
+            }
+            let port = port.unwrap();
+            if port == state.port {
+                return Task::none();
+            }
+            state.port = port;
+            state.qr_code = State::create_qr_code(&state.create_url_string(), 1200);
+            if let Some(handle) = &state.server_handle {
+                handle.abort();
+                state.server_handle = None;
+                sleep(std::time::Duration::from_millis(50));
+                return start_server(state);
+            }
+        },
+
+        Message::SelectFilesExplorer => {
+            let paths: Option<Vec<PathBuf>> = FileDialog::new()
+                .add_filter("Any", &["*"])
+                .pick_files();
+            if let Some(paths) = paths {
+                return add_files_from_path_list(state, paths);
+            } 
+        },
+        
+        Message::Resize(width, height)=> state.size = (width as f32, height as f32),
+
+        Message::AddFiles(path) => return add_files_from_path(state, path),
+
+        Message::ServerMessage(ServerMessage::Downloaded { index, ip }) => {
+            state.transmitted_data += state.file_path.read().unwrap()[index].size;
+            state.file_path.write().unwrap()[index].download_count += 1;
+            state.clients.entry(ip).and_modify(|client| {
+                client.download_count += 1;
+                client.last_connection = std::time::Instant::now();
+            });
+        },
+
+        Message::ServerMessage(ServerMessage::ClientConnected { ip }) => {
+            state.clients
+                .entry(ip)
+                .and_modify(|client| client.last_connection = std::time::Instant::now())
+                .or_insert(ClientInfo { download_count: 0, last_connection: std::time::Instant::now() });
+    
+            return Task::perform(async_sleep(std::time::Duration::from_secs(4)), |_| Message::None);
+        },
+
         Message::None => {}
     }
 
     Task::none()
 }
 
-fn download_requested_from(state: &mut State, ip: std::net::IpAddr) {
-    state.clients.entry(ip).and_modify(|client| {
-        client.download_count += 1;
-        client.last_connection = std::time::Instant::now();
-    });
-}
-
-fn file_downloaded(state: &mut State, index: usize) {
-    state.transmitted_data += state.file_path.read().unwrap()[index].size;
-    state.file_path.write().unwrap()[index].download_count += 1;
-}
-
-fn client_connected(state: &mut State, ip: std::net::IpAddr) -> Task<Message> {
-    state.clients
-        .entry(ip)
-        .and_modify(|client| client.last_connection = std::time::Instant::now())
-        .or_insert(ClientInfo { download_count: 0, last_connection: std::time::Instant::now() });
-
-    Task::perform(async_sleep(std::time::Duration::from_secs(4)), |_| Message::None)
-}
 
 async fn async_sleep(duration: std::time::Duration) {
     tokio::time::sleep(duration).await;
-}
-
-fn update_port_text_field(state: &mut State, port: String) {
-    match port.parse::<u16>() {
-        Err(_) if !port.is_empty() => {},
-        _ => state.port_buffer = port,        
-    }
-}
-
-fn change_port(state: &mut State) -> Task<Message> {
-    let port = state.port_buffer.parse::<u16>();
-    if port.is_err() {
-        return Task::none();
-    }
-    let port = port.unwrap();
-    if port == state.port {
-        return Task::none();
-    }
-    state.port = port;
-    state.qr_code = State::create_qr_code(&state.create_url_string(), 1200);
-    if let Some(handle) = &state.server_handle {
-        handle.abort();
-        state.server_handle = None;
-        sleep(std::time::Duration::from_millis(50));
-        return start_server(state);
-    }
-    Task::none()
-}
-
-fn public_mode(state: &mut State) {
-    if state.ip_adress_public.is_some() {
-        state.local_host = false;
-        state.qr_code = State::create_qr_code(&state.create_url_string(), 1200);
-    } else {
-        state.ip_adress_public = public_ip_address::perform_lookup(None).map(|lookup|lookup.ip).ok();
-    }
-}
-
-fn localhost_mode(state: &mut State) {
-    state.local_host = true;
-    state.qr_code = State::create_qr_code(&state.create_url_string(), 1200);
-}
-
-fn select_files_in_explorer(state: &mut State) -> Task<Message> {
-    let paths: Option<Vec<PathBuf>> = FileDialog::new()
-        .add_filter("Any", &["*"])
-        .pick_files();
-    if let Some(paths) = paths {
-        return add_selected_files_list(state, paths);
-    } 
-    Task::none()
-}
-
-fn select_folders_in_explorer(state: &mut State) -> Task<Message> {
-    let paths: Option<Vec<PathBuf>> = FileDialog::new()
-        .add_filter("Any", &["*"])
-        .pick_folders();
-    if let Some(paths) = paths {
-        return add_selected_files_list(state, paths);
-    }
-    Task::none()
-}
-
-fn add_selected_files_list(state: &mut State, paths: Vec<PathBuf>) -> Task<Message> {
-    let mut tasks = Vec::new();
-    for path in paths {
-        tasks.push(add_files_from_path(state, path));
-    }
-    Task::batch(tasks)
-}
-
-fn show_in_explorer(state: &mut State, indx: usize) {
-    if let Some(FileInfo { path, .. }) = &state.file_path.read().unwrap().get(indx) {
-        Command::new( "explorer" )
-            .arg("/select,")
-            .arg(path)
-            .spawn( )
-            .unwrap( );
-    }
-}
-
-fn open_in_explorer(state: &mut State, indx: usize) {
-    if let Some(FileInfo { path, .. }) = &state.file_path.read().unwrap().get(indx) {
-        Command::new( "explorer" )
-            .arg(path)
-            .spawn( )
-            .unwrap( );
-    }
-}
-
-fn delete_all_files(state: &mut State) {
-    state.file_path.write().unwrap().clear();
-    stop_server(state);
-}
-
-fn stop_server(state: &mut State) {
-    if let Some(handle) = &state.server_handle {
-        handle.abort();
-        state.server_handle = None;
-    }
-}
-
-fn delete_file(state: &mut State, indx: usize) {
-    state.file_path.write().unwrap().remove(indx);
-    if state.file_path.read().unwrap().is_empty() {
-        stop_server(state);
-    } 
 }
 
 fn find_files_recursive(path: &PathBuf, files: &mut Vec<PathBuf>) {
@@ -202,31 +177,37 @@ fn find_files_recursive(path: &PathBuf, files: &mut Vec<PathBuf>) {
     }
 }
 
+fn find_files(path: &PathBuf) -> Vec<PathBuf> {
+    let mut files = Vec::new();
+    find_files_recursive(path, &mut files);
+    files
+}
+
+fn add_files_from_path_list(state: &mut State, paths: Vec<PathBuf>) -> Task<Message> {
+    let mut tasks = Vec::new();
+    for path in paths {
+        tasks.push(add_files_from_path(state, path));
+    }
+    Task::batch(tasks)
+}
+
 fn add_files_from_path(state: &mut State, path: PathBuf) -> Task<Message> {
-    let mut paths = Vec::new();
-    find_files_recursive(&path, &mut paths);
+    let paths = find_files(&path);
 
-    let mut task = Task::none();
     for file in paths {
-        {
-            let mut file_path = state.file_path.write().unwrap();
-            if file_path.iter().find(| FileInfo { path, .. }| path == &file).is_some() {
-                continue;
-            }
-            let file_size = file.metadata().unwrap().len() as usize;
-            file_path.push( FileInfo { 
-                path: file.clone(),
-                size: file_size,
-                download_count: 0,
-            });
-            file_path.sort_by(|a, b| a.path.file_name().cmp(&b.path.file_name()));
+        if state.file_path.read().unwrap().iter().find(| FileInfo { path, .. }| path == &file).is_some() {
+            continue;
         }
-        if state.server_handle.is_none() {
-            task = start_server(state);
-        }
+        state.file_path.write().unwrap().insert(0, FileInfo { 
+            path: file.clone(),
+            size: file.metadata().unwrap().len() as usize,
+            download_count: 0,
+        });
     } 
-
-    task
+    if state.server_handle.is_none() {
+        return start_server(state);
+    }
+    Task::none()
 }
 
 fn start_server(state: &mut State) -> Task<Message> {
@@ -252,7 +233,9 @@ fn start_server(state: &mut State) -> Task<Message> {
     task
 }
 
-fn copy_url_to_clipboard(state: &State) {
-    let mut ctx = ClipboardContext::new().unwrap();
-    ctx.set_contents(state.create_url_string()).unwrap();
+fn stop_server(state: &mut State) {
+    if let Some(handle) = &state.server_handle {
+        handle.abort();
+        state.server_handle = None;
+    }
 }

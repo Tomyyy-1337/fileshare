@@ -12,8 +12,7 @@ use crate::state;
 
 #[derive(Debug, Clone)]
 pub enum ServerMessage {
-    Downloaded { index: usize },
-    DownloadRequestedFrom { ip: IpAddr },
+    Downloaded { index: usize , ip: IpAddr },
     ClientConnected { ip: IpAddr },
 }
 
@@ -116,62 +115,54 @@ pub fn size_string(size: &usize) -> String {
 }
 
 fn create_download_route(files: Arc<RwLock<Vec<state::FileInfo>>>, tx: Sender<ServerMessage>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    let tx_arc = Arc::new(Mutex::new(tx.clone()));
-    warp::path!("download" / usize).and_then(move |index| {
-        let tx = tx.clone();
-        let files = files.clone();
-        async move {
-            let file_info = {
-                let files = files.read().unwrap();
-                if index >= files.len() {
-                    return Err(warp::reject::not_found());
-                }
-                files.get(index).cloned().unwrap()
-            };
+    warp::path!("download" / usize)
+        .and(warp::addr::remote())
+        .and_then(move |index, addr: Option<std::net::SocketAddr>| {
+            let tx = tx.clone();
+            let files = files.clone();
+            async move {
+                let file_info = {
+                    let files = files.read().unwrap();
+                    if index >= files.len() {
+                        return Err(warp::reject::not_found());
+                    }
+                    files.get(index).cloned().unwrap()
+                };
 
-            let state::FileInfo { path, .. } = file_info;
-            let file_name = Path::new(&path)
-                .file_name()
-                .and_then(|n| n.to_str())
-                .ok_or_else(|| warp::reject::not_found())?;
+                let state::FileInfo { path, .. } = file_info;
+                let file_name = Path::new(&path)
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .ok_or_else(|| warp::reject::not_found())?;
 
-            let file = File::open(&path).await.map_err(|_| warp::reject::not_found())?;
-            let stream = ReaderStream::new(file);
-            let counting_stream = CountingStream::new(stream, tx, index);
-            let body = Body::wrap_stream(counting_stream);
-            let response = Response::new(body);
+                let file = File::open(&path).await.map_err(|_| warp::reject::not_found())?;
+                let stream = ReaderStream::new(file);
+                let counting_stream = CountingStream::new(stream, tx, index, addr.unwrap().ip());
+                let body = Body::wrap_stream(counting_stream);
+                let response = Response::new(body);
 
-            let response = warp::reply::with_header(
-                response,
-                header::CONTENT_DISPOSITION,
-                format!("attachment; filename=\"{}\"", file_name),
-            );
+                let response = warp::reply::with_header(
+                    response,
+                    header::CONTENT_DISPOSITION,
+                    format!("attachment; filename=\"{}\"", file_name),
+                );
 
-            let response = warp::reply::with_header(response, "Connection", "close");
-            Ok::<_, warp::Rejection>(response)
-        }
-    }).and(warp::addr::remote())
-    .map(move |reply, addr: Option<std::net::SocketAddr>| {
-        if let Some(socket_adress) = addr {
-            let ip = match socket_adress.ip() {
-                std::net::IpAddr::V4(ip) => IpAddr::V4(ip),
-                std::net::IpAddr::V6(ip) => IpAddr::V6(ip),
-            };
-            tx_arc.lock().unwrap().try_send(ServerMessage::DownloadRequestedFrom { ip }).unwrap();
-        }
-        reply
-    })
+                let response = warp::reply::with_header(response, "Connection", "close");
+                Ok::<_, warp::Rejection>(response)
+            }
+        })
 }
 
 struct CountingStream<S> {
     inner: S,
     tx: Sender<ServerMessage>,
     index: usize,
+    ip: IpAddr,
 }
 
 impl<S> CountingStream<S> {
-    fn new(inner: S, tx: Sender<ServerMessage>, index: usize) -> Self {
-        CountingStream { inner, tx, index }
+    fn new(inner: S, tx: Sender<ServerMessage>, index: usize, ip: IpAddr) -> Self {
+        CountingStream { inner, tx, index, ip }
     }
 }
 
@@ -185,8 +176,9 @@ where
         match Pin::new(&mut self.inner).poll_next(cx) {
             Poll::Ready(None) => {
                 let index = self.index;
+                let ip = self.ip;
                 loop {
-                    match self.tx.try_send(ServerMessage::Downloaded { index }) {
+                    match self.tx.try_send(ServerMessage::Downloaded { index, ip }) {
                         Ok(_) => break,
                         Err(_) => continue,
                     }
