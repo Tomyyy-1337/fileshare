@@ -1,4 +1,4 @@
-use std::{collections::HashMap, net::IpAddr, path::PathBuf, sync::{Arc, RwLock}};
+use std::{collections::HashMap, net::IpAddr, path::PathBuf, sync::{atomic::AtomicBool, Arc, RwLock}};
 use local_ip_address::local_ip;
 use iced::widget;
 use qrcode_generator::QrCodeEcc;
@@ -30,6 +30,7 @@ pub struct State {
     pub clients: HashMap<IpAddr, ClientInfo>,
     pub show_connections: bool,
     pub transmitted_data: usize,
+    pub block_external_connections: Arc<AtomicBool>,
 }
 
 impl Default for State {
@@ -52,6 +53,7 @@ impl Default for State {
             clients: HashMap::new(),
             show_connections: false,
             transmitted_data: 0,
+            block_external_connections: Arc::new(AtomicBool::new(true)),
         }
     }
 }

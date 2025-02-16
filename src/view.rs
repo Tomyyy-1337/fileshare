@@ -1,4 +1,4 @@
-use iced::{theme::palette, widget::{self, button, column, container, row, scrollable, text, text_input::default, Theme}};
+use iced::{theme::palette, widget::{self, button, checkbox, column, container, row, scrollable, text, text_input::default, Theme}};
 use crate::{server::size_string, state::{self, ClientInfo, State}, update::Message};
 
 pub fn view(state: &State) -> iced::Element<Message> {
@@ -71,6 +71,12 @@ pub fn view(state: &State) -> iced::Element<Message> {
 
     let text_view = text!("Connections:")
         .size(h2_size);
+
+    let block_external_connections = checkbox("Block External Connections", state.block_external_connections.load(std::sync::atomic::Ordering::Relaxed))
+        .on_toggle(Message::BlockExternalConnections)
+        .size(18)
+        .text_size(15)
+        .width(iced::Length::Fill);
 
     match state.port_buffer.parse::<u16>() {
         Err(_) => port_text = port_text.style(|theme, status| {
@@ -238,13 +244,15 @@ pub fn view(state: &State) -> iced::Element<Message> {
                 .width(iced::Length::Fill)
                 .color(if is_active { iced::Color::from_rgb8(0, 255, 0) } else { iced::Color::from_rgb8(255, 0, 0) });
 
-            let text_count = text!("{} ({})", download_count , size_string(download_size))
-                .size(p_size)
-                .width(iced::Length::Fixed(100.0))
-                .align_x(iced::alignment::Horizontal::Right);
+            let text_count = column![
+                text!("{} Downloads", download_count).size(11),
+                text!("of size {}", size_string(download_size)).size(11)
+            ]
+            .width(iced::Length::Shrink)
+            .align_x(iced::alignment::Horizontal::Right);
 
-
-            let conection = row![text_ip, text_count];
+            let conection = row![text_ip, text_count]
+                .align_y(iced::alignment::Vertical::Center);
 
             connections = connections.push(conection);
         }
@@ -300,7 +308,8 @@ pub fn view(state: &State) -> iced::Element<Message> {
         text_connection_info,
         url_text_field.width(iced::Length::Fill),
         url_buttons_row,
-        image
+        image,
+        block_external_connections
     ]
     .padding(5)
     .spacing(10)

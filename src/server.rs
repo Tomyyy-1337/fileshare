@@ -1,6 +1,6 @@
-use std::{net::IpAddr, path::Path, sync::{Arc, Mutex, RwLock}};
+use std::{net::IpAddr, path::Path, sync::{atomic::{AtomicBool, Ordering}, Arc, Mutex, RwLock}};
 use serde::Serialize;
-use warp::{http::header, reply::Response, Filter};
+use warp::{http::header, reject::Rejection, reply::Response, Filter};
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
 use warp::hyper::Body;
@@ -16,28 +16,39 @@ pub enum ServerMessage {
     ClientConnected { ip: IpAddr },
 }
 
-pub async fn server(ip: IpAddr, port: u16, path: Arc<RwLock<Vec<state::FileInfo>>>, tx: Sender<ServerMessage>) {
+pub async fn server(
+    ip: IpAddr, 
+    port: u16, 
+    path: Arc<RwLock<Vec<state::FileInfo>>>, 
+    tx: Sender<ServerMessage>,
+    block_external_connections: Arc<AtomicBool>)
+{
     let html_route = create_index_route(path.clone());
     let update_route = create_refresh_route(path.clone());
     let static_route = create_static_route();
     let download_route = create_download_route(path, tx.clone());
     
     let tx = Arc::new(Mutex::new(tx.clone()));
+    let block_external = block_external_connections.clone();
 
     let routes = html_route
         .or(update_route)
         .or(static_route)
         .or(download_route)
         .and(warp::addr::remote())
-        .map(move |reply, addr: Option<std::net::SocketAddr>| {
-            if let Some(socket_adress) = addr {
-                let ip = match socket_adress.ip() {
-                    std::net::IpAddr::V4(ip) => IpAddr::V4(ip),
-                    std::net::IpAddr::V6(ip) => IpAddr::V6(ip),
-                };
-                tx.lock().unwrap().try_send(ServerMessage::ClientConnected { ip }).unwrap();
+        .and_then(move |reply, addr: Option<std::net::SocketAddr>| {
+            let tx = tx.clone();
+            let block_external = block_external.load(Ordering::Relaxed);
+            async move {
+                if let Some(socket_address) = addr {
+                    let ip = socket_address.ip();
+                    if block_external && !is_private_ip(ip) {
+                        return Err(warp::reject::reject());
+                    }
+                    tx.lock().unwrap().try_send(ServerMessage::ClientConnected { ip }).unwrap();
+                }
+                Ok::<_, Rejection>(warp::reply::with_header(reply, "Connection", "close"))
             }
-            reply
         });
 
     warp::serve(routes)
@@ -63,7 +74,7 @@ fn create_index_route(path: Arc<RwLock<Vec<state::FileInfo>>>) -> impl Filter<Ex
             let path = path.clone();
             let html_str = fill_template(path, "index.html");
             let response = warp::reply::html(html_str);
-            warp::reply::with_header(response, "Connection", "close")
+            response
         });
     html_route
 }
@@ -82,7 +93,7 @@ fn create_refresh_route(path: Arc<RwLock<Vec<state::FileInfo>>>) -> impl Filter<
                 size: size_string(&path.read().unwrap().iter().map(|state::FileInfo{size, ..}| size).sum()),
                 html
             });
-            warp::reply::with_header(response, "Connection", "close")
+            response
         });
     refresh_route
 }
@@ -147,7 +158,6 @@ fn create_download_route(files: Arc<RwLock<Vec<state::FileInfo>>>, tx: Sender<Se
                     format!("attachment; filename=\"{}\"", file_name),
                 );
 
-                let response = warp::reply::with_header(response, "Connection", "close");
                 Ok::<_, warp::Rejection>(response)
             }
         })
@@ -187,5 +197,12 @@ where
             }
             other => other,
         }
+    }
+}
+
+fn is_private_ip(ip: IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(ipv4) => ipv4.is_loopback() || ipv4.is_private(),
+        IpAddr::V6(ipv6) => ipv6.is_loopback() || ipv6.is_unique_local(),
     }
 }

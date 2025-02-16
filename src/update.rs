@@ -25,12 +25,17 @@ pub enum Message {
     Resize(f32, f32),
     ServerMessage(server::ServerMessage),
     ToggleConnectionsView,
+    BlockExternalConnections(bool),
 }
 
 pub fn update(state: &mut State, message: Message) -> Task<Message> {
     match message {
         Message::ToggleDarkMode => state.dark_mode = !state.dark_mode,
         Message::ToggleConnectionsView => state.show_connections = !state.show_connections,
+
+        Message::BlockExternalConnections(block) => {
+            state.block_external_connections.store(block, std::sync::atomic::Ordering::Relaxed);
+        },
 
         Message::OpenInBrowser => webbrowser::open(&state.create_url_string()).unwrap(),
 
@@ -50,6 +55,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
             if state.ip_adress_public.is_some() {
                 state.local_host = false;
                 state.qr_code = State::create_qr_code(&state.create_url_string());
+                state.block_external_connections.store(false, std::sync::atomic::Ordering::Relaxed);
             } else {
                 state.ip_adress_public = public_ip_address::perform_lookup(None).map(|lookup|lookup.ip).ok();
             }
@@ -216,12 +222,13 @@ fn start_server(state: &mut State) -> Task<Message> {
         return Task::none();
     }
     let filepaths = state.file_path.clone();
+    let block_external_connections = state.block_external_connections.clone();
     let ip_adress = state.ip_adress;
     let port = state.port;
     let stream = channel(10, move |tx: futures::channel::mpsc::Sender<_>| {
         let tx = tx.clone();
         async move {
-            server(ip_adress, port, filepaths, tx).await
+            server(ip_adress, port, filepaths, tx, block_external_connections).await;
         }
     });
 
