@@ -153,8 +153,6 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
                 .entry(ip)
                 .and_modify(|client| client.last_connection = std::time::Instant::now())
                 .or_insert(ClientInfo { download_count: 0, last_connection: std::time::Instant::now(), download_size: 0, last_download: std::time::Instant::now() - std::time::Duration::from_secs(10) });
-
-            return Task::perform(async_sleep(std::time::Duration::from_secs(4)), |_| Message::None);
         },
 
         Message::ServerMessage(ServerMessage::DownloadActive { ip }) => {
@@ -168,11 +166,6 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
     }
 
     Task::none()
-}
-
-
-async fn async_sleep(duration: std::time::Duration) {
-    tokio::time::sleep(duration).await;
 }
 
 fn find_files_recursive(path: &PathBuf, files: &mut Vec<PathBuf>) {
