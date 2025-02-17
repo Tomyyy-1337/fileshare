@@ -41,6 +41,7 @@ pub struct State {
     pub total_downloads: usize,
     pub active_connections: usize,
     pub throughput: usize,
+    pub show_qr_code: bool,
 }
 
 impl Default for State {
@@ -68,6 +69,7 @@ impl Default for State {
             total_downloads: 0,
             active_connections: 0,
             throughput: 0,
+            show_qr_code: true,
         }
     }
 }
@@ -85,7 +87,7 @@ impl State {
     }
 
     pub fn create_qr_code(url: &String) -> widget::image::Handle {
-        let size = CONNECTION_PANE_WIDTH as usize - 10;
+        let size = CONNECTION_PANE_WIDTH as usize;
         let data = qrcode_generator::to_image(url, QrCodeEcc::Quartile, size).expect("Couldn't generate QR code.")
             .into_iter()
             .flat_map(|pixel| {

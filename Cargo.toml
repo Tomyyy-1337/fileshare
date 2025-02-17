@@ -1,6 +1,6 @@
 [package]
 name = "fileshare"
-version = "0.1.6"
+version = "0.1.7"
 edition = "2021"
 
 [dependencies]
@@ -23,7 +23,12 @@ bytes = "1.10.0"
 [dependencies.iced]
 version = "0.13.1"
 default-features = false
-features = ["tokio", "image", "advanced", "wgpu"]
+features = [
+    "tokio", 
+    "image", 
+    "advanced", 
+    "wgpu"
+]
 
 [profile.optimized]
 inherits = "release"

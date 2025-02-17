@@ -27,12 +27,16 @@ pub enum Message {
     BlockExternalConnections(bool),
     ServerMessage(server::ServerMessage),
     UpdateSpeed,
+    ShowQrCode(bool),
 }
 
 pub fn update(state: &mut State, message: Message) -> Task<Message> {
     match message {
         Message::ToggleDarkMode => state.dark_mode = !state.dark_mode,
+
         Message::ToggleConnectionsView => state.show_connections = !state.show_connections,
+
+        Message::ShowQrCode(show) => state.show_qr_code = show,
 
         Message::BlockExternalConnections(block) => {
             state.block_external_connections.store(block, std::sync::atomic::Ordering::Relaxed);

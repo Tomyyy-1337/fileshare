@@ -1,13 +1,13 @@
 use std::time::Duration;
 
-use iced::{border::{radius, Radius}, theme::{self, palette}, widget::{self, button, checkbox, column, container, horizontal_rule, row, rule::FillMode, scrollable, text, text_input::default, tooltip, Theme}};
+use iced::{border::Radius, theme::palette, widget::{self, button, checkbox, column, container, horizontal_rule, hover, row, rule::FillMode, scrollable, text, text_input::default, tooltip, Space, Theme}};
 use crate::{server::size_string, state::{self, State}, update::Message};
 
 const H1_SIZE: u16 = 30;
 const H2_SIZE: u16 = 20;
 const P_SIZE: u16 = 13;
-pub const CONNECTION_PANE_WIDTH: f32 = 230.0;
-const DOWNLOAD_PANE_WIDTH: f32 = 230.0;
+pub const CONNECTION_PANE_WIDTH: f32 = 250.0;
+const DOWNLOAD_PANE_WIDTH: f32 = 250.0;
 
 pub fn view(state: &State) -> iced::Element<Message> {     
     let max_width = 1100.0 + if state.show_connections { CONNECTION_PANE_WIDTH } else { 0.0 };
@@ -85,20 +85,22 @@ fn upload_pane(state: &State) -> iced::Element<Message> {
         let uploaded_files = text(shared_files_text)
             .size(H1_SIZE);
 
-        let mut files_list = column![]
-            .spacing(10)
-            .padding(16);
+        let mut files_list = column![];
 
         for (i, state::FileInfo{path, download_count, size}) in file_path.iter().cloned().enumerate() {
             let text_file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
             let text_file_name = text(text_file_name)
                 .size(H2_SIZE)
-                .height(iced::Length::Fixed(30.0))
+                .height(iced::Length::Fixed(32.0))
                 .width(iced::Length::Fill);
 
             let text_current_file = widget::text_input("", path.to_str().unwrap())
                 .size(P_SIZE)
                 .on_input(|_| Message::None);
+
+            let text_current_file = container(text_current_file)
+                .height(iced::Length::Fixed(32.0))
+                .padding(2);
                     
             let open_button = button("Open")
                 .on_press(Message::OpenFile(i))
@@ -131,6 +133,9 @@ fn upload_pane(state: &State) -> iced::Element<Message> {
             ]
             .spacing(5);
 
+            let row = container(row)
+                .style(modify_style(if i & 1 == 0 { 0.9 } else { 0.7 }));
+
             let title_row = row![text_file_name, meta_col]
                 .spacing(5)
                 .width(iced::Length::Fill)
@@ -138,10 +143,17 @@ fn upload_pane(state: &State) -> iced::Element<Message> {
             
             let col = column![
                 title_row,
-                text_current_file,
+                text_current_file
+            ];
+
+            let col = container(col)
+                .padding(12)
+                .style(modify_style(if i & 1 == 0 { 0.9 } else { 0.7 }));
+
+            let col = hover(col, column![
+                Space::new(iced::Length::Fill, iced::Length::Fill),
                 row
-            ]
-            .spacing(5);
+            ].padding(12));
 
             files_list = files_list.push(col);
         }
@@ -149,9 +161,6 @@ fn upload_pane(state: &State) -> iced::Element<Message> {
 
         let files_list = scrollable(files_list)
             .height(iced::Length::Fill);
-
-        let files_list = container(files_list)
-            .style(modify_style(0.6));
 
         let delete_all_button = button("Remove All")
             .on_press(Message::DeleteAllFiles)
@@ -202,10 +211,12 @@ fn download_pane(state: &State) -> iced::Element<Message> {
         .on_input(|_| Message::None);
 
     let copy_button = button("Copy URL")
-        .on_press(Message::CopyUrl);
+        .on_press(Message::CopyUrl)
+        .width(iced::Length::FillPortion(1));
 
-    let browser_button = button("Download")
-        .on_press(Message::OpenInBrowser);
+    let browser_button = button("Open")
+        .on_press(Message::OpenInBrowser)
+        .width(iced::Length::FillPortion(1));
 
     let text_mode = match state.local_host {
         true => "Mode: Localhost",
@@ -219,11 +230,11 @@ fn download_pane(state: &State) -> iced::Element<Message> {
 
     let block_external_connections = checkbox("Block External Connections", state.block_external_connections.load(std::sync::atomic::Ordering::Relaxed))
         .on_toggle(Message::BlockExternalConnections)
-        .size(18)
-        .text_size(15)
+        .size(16)
+        .text_size(16)
         .width(iced::Length::Fill);
 
-    let block_external_connections_tooltip = text("Block external connections to the server. Check this box if you want only devices on the same network to access the files.")
+    let block_external_connections_tooltip = text("Block external connections to the server. Check this box if you want only devices on the local network to access the files.")
         .size(P_SIZE);
 
     let block_external_connections = tooltip( 
@@ -236,8 +247,8 @@ fn download_pane(state: &State) -> iced::Element<Message> {
     );
 
     let url_buttons_row = row![
-        copy_button.width(iced::Length::FillPortion(1)),
-        browser_button.width(iced::Length::FillPortion(1))
+        copy_button,
+        browser_button
     ]
     .spacing(5);
 
@@ -247,7 +258,13 @@ fn download_pane(state: &State) -> iced::Element<Message> {
     ]
     .spacing(5);
 
-    let download_pane = column![
+    let show_qr_code = checkbox("Show QR Code", state.show_qr_code)
+        .on_toggle(|show| Message::ShowQrCode(show))
+        .size(16)
+        .text_size(16)
+        .width(iced::Length::Fill);
+
+    let mut download_pane = column![
         url_text,
         horizontal_rule(5)
             .style(|theme: &Theme| {
@@ -260,17 +277,39 @@ fn download_pane(state: &State) -> iced::Element<Message> {
             }),
         text_mode,
         select_row,
+        block_external_connections,
         text_connection_info,
         url_text_field.width(iced::Length::Fill),
         url_buttons_row,
-        image,
-        block_external_connections
+        show_qr_code,
     ]
     .padding(5)
     .spacing(10)
     .width(iced::Length::Fill)
     .height(iced::Length::Fill)
     .align_x(iced::alignment::Horizontal::Center);
+
+    if state.show_qr_code {
+        download_pane = download_pane.push(horizontal_rule(5)
+            .style(|theme: &Theme| {
+                iced::widget::rule::Style {
+                    fill_mode: FillMode::Full,
+                    color: theme.palette().primary,
+                    width: 1,
+                    radius: Radius::default(),
+                }
+            }));
+        download_pane = download_pane.push(image);
+        download_pane = download_pane.push(horizontal_rule(5)
+            .style(|theme: &Theme| {
+                iced::widget::rule::Style {
+                    fill_mode: FillMode::Full,
+                    color: theme.palette().primary,
+                    width: 1,
+                    radius: Radius::default(),
+                }
+            }));
+    }
 
     let download_pane = container(download_pane)
         .style(modify_style(0.8))
@@ -373,7 +412,7 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
 
     let mut connections = column![]
         .spacing(5)
-        .padding(5);
+        .padding(12);
 
     for (ip, client_info) in state.clients.iter() {
         let is_active = client_info.last_connection.elapsed().as_millis() < 3500;
@@ -391,9 +430,9 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
             .color(color);
 
         let text_count = column![
-            text!("{} Downloads", client_info.download_count).size(11),
-            text!("of size {}", size_string(client_info.download_size)).size(11),
-            text!("{}/s", size_string(client_info.speed)).size(11)	
+            text!("{} Downloads", client_info.download_count).size(12),
+            text!("of size {}", size_string(client_info.download_size)).size(12),
+            text!("{}/s", size_string(client_info.speed)).size(12)	
         ]
         .width(iced::Length::Shrink)
         .align_x(iced::alignment::Horizontal::Right);
