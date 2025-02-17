@@ -19,6 +19,7 @@ pub struct ClientInfo {
     pub last_download: std::time::Instant,
     pub received_data: usize,
     pub speed: usize,
+    pub max_speed: usize,
 }
 
 pub struct State {
@@ -36,6 +37,10 @@ pub struct State {
     pub show_connections: bool,
     pub transmitted_data: usize,
     pub block_external_connections: Arc<AtomicBool>,
+    pub active_downloads: usize,
+    pub total_downloads: usize,
+    pub active_connections: usize,
+    pub throughput: usize,
 }
 
 impl Default for State {
@@ -59,6 +64,10 @@ impl Default for State {
             show_connections: true,
             transmitted_data: 0,
             block_external_connections: Arc::new(AtomicBool::new(true)),
+            active_downloads: 0,
+            total_downloads: 0,
+            active_connections: 0,
+            throughput: 0,
         }
     }
 }

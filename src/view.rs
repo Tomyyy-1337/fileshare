@@ -1,5 +1,7 @@
-use iced::{theme::palette, widget::{self, button, checkbox, column, container, row, scrollable, text, text_input::default, Theme}};
-use crate::{server::size_string, state::{self, ClientInfo, State}, update::Message};
+use std::time::Duration;
+
+use iced::{border::{radius, Radius}, theme::{self, palette}, widget::{self, button, checkbox, column, container, horizontal_rule, row, rule::FillMode, scrollable, text, text_input::default, tooltip, Theme}};
+use crate::{server::size_string, state::{self, State}, update::Message};
 
 const H1_SIZE: u16 = 30;
 const H2_SIZE: u16 = 20;
@@ -56,9 +58,17 @@ fn upload_pane(state: &State) -> iced::Element<Message> {
     let url_select_row = row![url_select_button, url_select_button2]
         .spacing(5);
 
-    // === Layout ===
     let mut pane = column![
         upload_files,
+        horizontal_rule(5)
+            .style(|theme: &Theme| {
+                iced::widget::rule::Style {
+                    fill_mode: FillMode::Full,
+                    color: theme.palette().primary,
+                    width: 1,
+                    radius: Radius::default(),
+                }
+            }),
     ]
     .padding(5)
     .spacing(10)
@@ -147,12 +157,18 @@ fn upload_pane(state: &State) -> iced::Element<Message> {
             .on_press(Message::DeleteAllFiles)
             .width(iced::Length::FillPortion(1));
         
-        let text_new_file = text!("Select new File")
-            .size(H2_SIZE);
-        
-        pane = pane.push(text_new_file);
         pane = pane.push(url_select_row.width(iced::Length::Fill));
         pane = pane.push(uploaded_files);
+        pane = pane.push(horizontal_rule(5)
+            .style(|theme: &Theme| {
+                iced::widget::rule::Style {
+                    fill_mode: FillMode::Full,
+                    color: theme.palette().primary,
+                    width: 1,
+                    radius: Radius::default(),
+                }
+            }),
+        );
         pane = pane.push(files_list);
         pane = pane.push(delete_all_button);
         pane = pane.align_x(iced::alignment::Horizontal::Center);
@@ -207,6 +223,18 @@ fn download_pane(state: &State) -> iced::Element<Message> {
         .text_size(15)
         .width(iced::Length::Fill);
 
+    let block_external_connections_tooltip = text("Block external connections to the server. Check this box if you want only devices on the same network to access the files.")
+        .size(P_SIZE);
+
+    let block_external_connections = tooltip( 
+        block_external_connections,
+        container(block_external_connections_tooltip)
+            .padding(10)
+            .width(iced::Length::Fixed(300.0))
+            .style(container::rounded_box),
+        tooltip::Position::Bottom
+    );
+
     let url_buttons_row = row![
         copy_button.width(iced::Length::FillPortion(1)),
         browser_button.width(iced::Length::FillPortion(1))
@@ -221,6 +249,15 @@ fn download_pane(state: &State) -> iced::Element<Message> {
 
     let download_pane = column![
         url_text,
+        horizontal_rule(5)
+            .style(|theme: &Theme| {
+                iced::widget::rule::Style {
+                    fill_mode: FillMode::Full,
+                    color: theme.palette().primary,
+                    width: 1,
+                    radius: Radius::default(),
+                }
+            }),
         text_mode,
         select_row,
         text_connection_info,
@@ -258,24 +295,43 @@ fn footer_pane(state: &State) -> iced::Element<Message> {
         .on_input(Message::PortTextUpdate)
         .on_submit(Message::ChangePort)
         .width(iced::Length::Fixed(100.0));
-    
-    match state.port_buffer.parse::<u16>() {
-        Err(_) => port_text = port_text.style(|theme, status| {
-            iced::widget::text_input::Style {
-                background: iced::Background::Color(iced::Color::from_rgb8(255, 0, 0)),
-                ..default(theme, status)                
-            }
-        }),
-        Ok(n) if state.port != n => 
+
+    let port_tooltip = match state.port_buffer.parse::<u16>() {
+        Err(_) => {
             port_text = port_text.style(|theme, status| {
                 iced::widget::text_input::Style {
-                    background: iced::Background::Color(iced::Color::from_rgb8(0, 0, 255)),
+                    background: iced::Background::Color(iced::Color::from_rgb8(255, 0, 0)),
                     ..default(theme, status)                
                 }
-            }
-        ),
-        _ => {}
-    }
+            });
+            format!("Invaid port number. Please enter a number between 0 and 65535. (Active Port: {})", state.port)
+        },
+        Ok(n) if state.port != n => {
+            port_text = port_text.style(|theme, status| {
+                    iced::widget::text_input::Style {
+                        background: iced::Background::Color(iced::Color::from_rgb8(0, 0, 255)),
+                        ..default(theme, status)                
+                    }
+                }
+            );
+            format!("Press Enter to change the port. (Active Port: {})", state.port)
+        }  
+        _ => {
+            "Change the port the server is running on. If you want to serve the files on the internet, make sure to open the port in your router settings.".to_owned()
+        }
+    };
+
+    let port_tooltip = text(port_tooltip)
+        .size(P_SIZE);
+
+    let port_text = tooltip( 
+        port_text,
+        container(port_tooltip)
+            .padding(10)
+            .width(iced::Length::Fixed(400.0))
+            .style(container::rounded_box),
+        tooltip::Position::Top
+    );
 
     let text_view = text!("Connections:")
         .size(H2_SIZE);
@@ -345,6 +401,38 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
         let conection = row![text_ip, text_count]
             .align_y(iced::alignment::Vertical::Center);
 
+        let last_connection_text = match (client_info.last_connection.elapsed().as_millis() < 3500, client_info.last_download.elapsed().as_millis() < 3500) {
+            (true, true) => format!("Downloading at up to {}/s", size_string(client_info.max_speed)),
+            (true, false) => {
+                let last = if client_info.download_count > 0 {
+                    format!("Last download {} ago \nat up to {}/s ", format_time(client_info.last_download.elapsed()), size_string(client_info.max_speed))
+                } else {
+                    "".to_owned()
+                };
+                format!("Connected.\n{}", last)
+            },
+            (false, _) => {
+                let last = if client_info.download_count > 0 {
+                    format!("Last download {} ago \nat up to {}/s ", format_time(client_info.last_download.elapsed()), size_string(client_info.max_speed))
+                } else {
+                    "".to_owned()
+                };
+                format!("Last seen {} ago\n{}", format_time(client_info.last_connection.elapsed()), last)
+            },
+        };
+
+        let tooltip_conection = text(last_connection_text)
+            .size(P_SIZE);
+
+        let conection = tooltip(
+            conection,
+            container(tooltip_conection)
+                .padding(10)
+                .width(iced::Length::Shrink)
+                .style(container::rounded_box),
+            tooltip::Position::Bottom
+        );
+
         connections = connections.push(conection);
     }
 
@@ -368,18 +456,12 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
     ]
     .spacing(5);
 
-    let active_downloads = state.clients.iter().filter(|(_, ClientInfo {last_download, ..})| last_download.elapsed().as_millis() < 3500).count();
-    let total_downloads = state.clients.iter().map(|(_, ClientInfo {download_count, ..})| download_count).sum::<usize>();
-    let num_clients = state.clients.len();
-    let active_clients = state.clients.iter().filter(|(_, ClientInfo {last_connection, ..})| last_connection.elapsed().as_millis() < 3500).count();
-    let speed_sum = state.clients.iter().map(|(_, ClientInfo {speed, ..})| speed).sum::<usize>();
-
     let value_column = column![
-        text!("{}", active_downloads).size(P_SIZE).align_x(iced::alignment::Horizontal::Right).width(iced::Length::Fill),
-        text!("{}", active_clients).size(P_SIZE).align_x(iced::alignment::Horizontal::Right).width(iced::Length::Fill),
-        text!("{}", num_clients).size(P_SIZE).align_x(iced::alignment::Horizontal::Right).width(iced::Length::Fill),
-        text!("{}", total_downloads).size(P_SIZE).align_x(iced::alignment::Horizontal::Right).width(iced::Length::Fill),
-        text!("{}/s", size_string(speed_sum)).size(P_SIZE).align_x(iced::alignment::Horizontal::Right).width(iced::Length::Fill),
+        text!("{}", state.active_downloads).size(P_SIZE).align_x(iced::alignment::Horizontal::Right).width(iced::Length::Fill),
+        text!("{}", state.active_connections).size(P_SIZE).align_x(iced::alignment::Horizontal::Right).width(iced::Length::Fill),
+        text!("{}", state.clients.len()).size(P_SIZE).align_x(iced::alignment::Horizontal::Right).width(iced::Length::Fill),
+        text!("{}", state.total_downloads).size(P_SIZE).align_x(iced::alignment::Horizontal::Right).width(iced::Length::Fill),
+        text!("{}/s", size_string(state.throughput)).size(P_SIZE).align_x(iced::alignment::Horizontal::Right).width(iced::Length::Fill),
         text!("{}", size_string(state.transmitted_data)).size(P_SIZE).align_x(iced::alignment::Horizontal::Right).width(iced::Length::Fill),
     ]
     .spacing(5);
@@ -387,10 +469,32 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
     let stats_row = row![name_column, value_column]
         .spacing(5);
 
-
-    let connections = column![text_connections, connections, stats_text, stats_row]
-        .padding(5)
-        .spacing(5);
+    let connections = column![
+        text_connections, 
+        horizontal_rule(5)
+            .style(|theme: &Theme| {
+                iced::widget::rule::Style {
+                    fill_mode: FillMode::Full,
+                    color: theme.palette().primary,
+                    width: 1,
+                    radius: Radius::default(),
+                }
+            }),
+        connections, 
+        stats_text,
+        horizontal_rule(5)
+            .style(|theme: &Theme| {
+                iced::widget::rule::Style {
+                    fill_mode: FillMode::Full,
+                    color: theme.palette().primary,
+                    width: 1,
+                    radius: Radius::default(),
+                }
+            }),
+        stats_row
+    ]
+    .padding(5)
+    .spacing(10);
 
     let connections = container(connections)
         .style(modify_style(0.8))
@@ -419,4 +523,19 @@ fn modify_style(mult: f32) -> impl Fn(&Theme) -> container::Style {
             ..container::Style::default()
         }
     }
+}
+
+fn format_time(time: Duration) -> String {
+    let secs = time.as_secs();
+    let mins = secs / 60;
+    let hours = mins / 60;
+    let secs = secs % 60;
+    let mins = mins % 60;
+    if hours > 0 {
+        return format!("{:02}h {:02}m {:02}s", hours, mins, secs);
+    }
+    if mins > 0 {
+        return format!("{:02}m {:02}s", mins, secs);
+    }
+    format!("{:02}s", secs)
 }

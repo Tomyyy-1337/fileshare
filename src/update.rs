@@ -151,13 +151,25 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
                 client.last_connection = std::time::Instant::now();
                 client.download_size += state.file_path.read().unwrap()[index].size;
             });
+
+            state.total_downloads += 1;
         },
 
         Message::ServerMessage(ServerMessage::ClientConnected { ip }) => {
             state.clients
                 .entry(ip)
                 .and_modify(|client| client.last_connection = std::time::Instant::now())
-                .or_insert(ClientInfo { download_count: 0, last_connection: std::time::Instant::now(), download_size: 0, last_download: std::time::Instant::now() - std::time::Duration::from_secs(10), received_data: 0, speed: 0 });
+                .or_insert(ClientInfo { download_count: 0, last_connection: std::time::Instant::now(), download_size: 0, last_download: std::time::Instant::now() - std::time::Duration::from_secs(10), received_data: 0, speed: 0, max_speed: 0 });
+
+            state.active_connections = state.clients
+                .iter()
+                .filter(|(_, client)| client.last_connection.elapsed().as_millis() < 3500)
+                .count();
+
+            state.active_downloads = state.clients
+                .iter()
+                .filter(|(_, client)| client.last_download.elapsed().as_millis() < 3500)
+                .count();
         },
 
         Message::ServerMessage(ServerMessage::DownloadActive { ip }) => {
@@ -172,7 +184,9 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
             for (_, client) in state.clients.iter_mut() {
                 client.speed = client.received_data * 1024 * 1024;
                 client.received_data = 0;
+                client.max_speed = client.speed.max(client.max_speed);
             }
+            state.throughput = state.clients.iter().map(|(_, client)| client.speed).sum();
         },
 
         Message::None => {}

@@ -23,7 +23,7 @@ fn main() -> iced::Result {
         .window(iced::window::Settings {
             resizable: true,
             size: (Size::new(900.0, 600.0)),
-            min_size: Some(Size::new(780.0, 560.0)),
+            min_size: Some(Size::new(780.0, 580.0)),
             icon: Some(iced::window::icon::from_file("./assets/icon.ico").unwrap()),
             ..iced::window::Settings::default()
         })

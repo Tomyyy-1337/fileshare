@@ -4,7 +4,6 @@ version = "0.1.6"
 edition = "2021"
 
 [dependencies]
-iced = {version = "0.13.1", features = ["tokio", "image", "advanced"]}
 ipconfig = "0.3.2"
 local-ip-address = "0.6.3"
 qrcode-generator = "5.0.0"
@@ -20,6 +19,11 @@ tera = "1.10.0"
 serde = { version = "1.0.217", features = ["derive"] }
 public-ip-address = { version = "0.3", features = ["blocking"] }
 bytes = "1.10.0"
+
+[dependencies.iced]
+version = "0.13.1"
+default-features = false
+features = ["tokio", "image", "advanced", "wgpu"]
 
 [profile.optimized]
 inherits = "release"
