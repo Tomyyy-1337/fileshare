@@ -43,20 +43,32 @@ document.getElementById('downloadAll').addEventListener('click', async () => {
 async function downloadFile(link) {
     const url = link.href;
 
-    try {
-        const response = await fetch(url);
-        const blob = await response.blob();
-        const contentDisposition = response.headers.get('content-disposition');
-        const fileName = getFileNameFromContentDisposition(contentDisposition);
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-    } catch (error) {
-        console.error(error);
+    let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    let isLocal = /(^127\.)|(^192\.168\.)|(^10\.)|(^172\.1[6-9]\.)|(^172\.2[0-9]\.)|(^172\.3[0-1]\.)|(^::1$)|(^[fF][cCdD])/i.test(location.hostname);
+
+    if (isMobile && !isLocal) { 
+        try {
+            window.open(url, '_blank');
+        } catch (error) {
+            console.error(error);
+        }
+    } else {
+        try {
+            const response = await fetch(url);
+            const blob = await response.blob();
+            const contentDisposition = response.headers.get('content-disposition');
+            const fileName = getFileNameFromContentDisposition(contentDisposition);
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error(error);
+        }
     }
+
     numDownloadsCompleted++;
     document.getElementById('downloadAll').textContent = downloadButtonString();
 }
