@@ -71,7 +71,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         },
         
         Message::DeleteFile(indx) => {
-            state.file_path.write().unwrap().remove(indx);
+            state.file_path.write().unwrap().remove(&indx);
             if state.file_path.read().unwrap().is_empty() {
                 stop_server(state);
             } 
@@ -83,7 +83,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         },
 
         Message::OpenFile(indx) => {
-            if let Some(FileInfo { path, .. }) = &state.file_path.read().unwrap().get(indx) {
+            if let Some(FileInfo { path, .. }) = &state.file_path.read().unwrap().get(&indx) {
                 Command::new( "explorer" )
                     .arg(path)
                     .spawn( )
@@ -92,7 +92,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         },
 
         Message::ShowInExplorer(indx) => {
-            if let Some(FileInfo { path, .. }) = &state.file_path.read().unwrap().get(indx) {
+            if let Some(FileInfo { path, .. }) = &state.file_path.read().unwrap().get(&indx) {
                 Command::new( "explorer" )
                     .arg("/select,")
                     .arg(path)
@@ -124,7 +124,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
             if let Some(handle) = &state.server_handle {
                 handle.abort();
                 state.server_handle = None;
-                sleep(std::time::Duration::from_millis(50));
+                sleep(std::time::Duration::from_millis(100));
                 return start_server(state);
             }
         },
@@ -146,11 +146,23 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
             }
         },
 
+        Message::ServerMessage(ServerMessage::DownloadAllRequest { ip }) => {
+            let file_path = state.file_path.read().unwrap();
+            let file_size = file_path.iter().map(|(_, file)| file.size).sum();
+
+            state.clients.entry(ip).and_modify(|client| {
+                client.current_downloads_size = file_size;
+                client.last_connection = std::time::Instant::now();
+                client.last_download = std::time::Instant::now();
+                client.state = ClientState::Downloading;
+            });
+        },
+
         Message::ServerMessage(ServerMessage::Downloaded { index, ip }) => {
             let mut filepath = state.file_path.write().unwrap();
-            if let Some(file) = filepath.get_mut(index) {
+            if let Some(file) = filepath.get_mut(&index) {
                 file.download_count += 1;
-            }
+            } 
             drop(filepath);
             state.clients.entry(ip).and_modify(|client| {
                 client.download_count += 1;
@@ -174,7 +186,6 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
                     received_data: 0, 
                     speed: 0, 
                     max_speed: 0,
-                    current_downloads: Vec::new(),
                     current_downloads_size: 0,
                     state: ClientState::Connected,
                     current_download_progress: 0,
@@ -183,10 +194,9 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
 
         Message::ServerMessage(ServerMessage::DownloadRequest { index, ip } ) => {
             state.clients.entry(ip).and_modify(|client| {
-                client.current_downloads.push(index);
                 client.last_connection = std::time::Instant::now();
                 client.last_download = std::time::Instant::now();
-                client.current_downloads_size += state.file_path.read().unwrap().get(index).map(|file| file.size).unwrap_or(0);
+                client.current_downloads_size += state.file_path.read().unwrap().get(&index).map(|file| file.size).unwrap_or(0);
                 client.state = ClientState::Downloading;
             });
         },
@@ -223,18 +233,12 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
                 }
 
                 if client.state != ClientState::Downloading {
-                    client.current_downloads.clear();
                     client.current_downloads_size = 0;
                     client.current_download_progress = 0;
                 }
             }
             state.throughput = state.clients.iter().map(|(_, client)| client.speed).sum();
-
             state.active_connections = active + downloading;
-
-
-
-
             state.active_downloads = downloading;
         },
 
@@ -281,14 +285,15 @@ fn add_files_from_path(state: &mut State, path: PathBuf) -> Option<Task<Message>
     let paths = find_files(&path);
 
     for file in paths {
-        if state.file_path.read().unwrap().iter().find(| FileInfo { path, .. }| path == &file).is_some() {
+        if state.file_path.read().unwrap().iter().find(| (_, FileInfo { path, .. })| path == &file).is_some() {
             continue;
         }
-        state.file_path.write().unwrap().push(FileInfo { 
+        state.file_path.write().unwrap().insert(state.file_index, FileInfo { 
             path: file.clone(),
             size: file.metadata().unwrap().len() as usize,
             download_count: 0,
         });
+        state.file_index += 1;
     } 
     if state.server_handle.is_none() {
         return Some(start_server(state));

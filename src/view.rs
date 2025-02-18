@@ -74,7 +74,11 @@ fn upload_pane(state: &State) -> iced::Element<Message> {
     .spacing(10)
     .width(iced::Length::Fill);
     
-    let file_path = state.file_path.read().unwrap();
+    let mut file_path = state.file_path.read().unwrap()
+        .iter()
+        .map(|(i, f)| (*i, f.clone()))
+        .collect::<Vec<_>>();
+    file_path.sort_by_key(|(indx, _)| *indx);
 
     if !file_path.is_empty() {
         let shared_files_text = match file_path.len() {
@@ -87,7 +91,7 @@ fn upload_pane(state: &State) -> iced::Element<Message> {
 
         let mut files_list = column![];
 
-        for (i, state::FileInfo{path, download_count, size}) in file_path.iter().cloned().enumerate().rev() {
+        for (i, state::FileInfo{path, download_count, size}) in file_path.iter().cloned().rev() {
             let text_file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
             let text_file_name = text(text_file_name)
                 .size(H2_SIZE)

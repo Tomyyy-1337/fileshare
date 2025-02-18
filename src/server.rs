@@ -16,12 +16,13 @@ pub enum ServerMessage {
     ClientConnected { ip: IpAddr },
     DownloadActive { ip: IpAddr, num_packets: usize },
     DownloadRequest { index: usize, ip: IpAddr },
+    DownloadAllRequest { ip: IpAddr },
 }
 
 pub async fn server(
     ip: IpAddr, 
     port: u16, 
-    path: Arc<RwLock<Vec<state::FileInfo>>>, 
+    path: Arc<RwLock<HashMap<usize, state::FileInfo>>>, 
     tx: Sender<ServerMessage>,
     block_external_connections: Arc<AtomicBool>)
 {
@@ -31,6 +32,7 @@ pub async fn server(
     let update_route = create_refresh_route(path.clone());
     let static_route = create_static_route();
     let download_route = create_download_route(path, tx.clone(), semaphors.clone());
+    let download_all_route = create_download_all_route(tx.clone());
     
     let tx = Arc::new(Mutex::new(tx.clone()));
     let block_external = block_external_connections.clone();
@@ -39,6 +41,7 @@ pub async fn server(
         .or(update_route)
         .or(static_route)
         .or(download_route)
+        .or(download_all_route)
         .and(warp::addr::remote())
         .and_then(move |reply, addr: Option<std::net::SocketAddr>| {
             let tx = tx.clone();
@@ -72,7 +75,7 @@ fn create_static_route() -> impl Filter<Extract = impl warp::Reply, Error = warp
         .and(warp::fs::dir("./static"))
 }
 
-fn create_index_route(path: Arc<RwLock<Vec<state::FileInfo>>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+fn create_index_route(path: Arc<RwLock<HashMap<usize, state::FileInfo>>>, ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let html_route = warp::path("index")
         .map(move || {
             let path = path.clone();
@@ -89,12 +92,12 @@ struct UpdateData {
     html: String
 }
 
-fn create_refresh_route(path: Arc<RwLock<Vec<state::FileInfo>>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+fn create_refresh_route(path: Arc<RwLock<HashMap<usize, state::FileInfo>>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let refresh_route = warp::path("update-content")
         .map(move || {
             let html = fill_template(path.clone(), "file_list.html");
             let response = warp::reply::json(&UpdateData {
-                size: size_string(path.read().unwrap().iter().map(|state::FileInfo{size, ..}| size).sum()),
+                size: size_string(path.read().unwrap().iter().map(|(_, state::FileInfo{size, ..})| size).sum()),
                 html
             });
             response
@@ -102,18 +105,24 @@ fn create_refresh_route(path: Arc<RwLock<Vec<state::FileInfo>>>) -> impl Filter<
     refresh_route
 }
 
-fn fill_template(path: Arc<RwLock<Vec<state::FileInfo>>>, template: &'static str) -> String {
+fn fill_template(path: Arc<RwLock<HashMap<usize, state::FileInfo>>>, template: &'static str) -> String {
     let tera: Tera = Tera::new("template/*.html").unwrap();
     let mut context = tera::Context::new();
 
-    let files: Vec<FileInfo> = path.read().unwrap().iter().enumerate().rev().map(|(i, state::FileInfo{path, size, ..})| {
+    let mut path = path.read().unwrap()
+        .iter()
+        .map(|(i, f)| (*i, f.clone()))
+        .collect::<Vec<_>>();
+    path.sort_by_key(|(indx, _)| *indx);
+
+    let files: Vec<FileInfo> = path.iter().rev().map(|(i, state::FileInfo{path, size, ..})| {
         let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
         let size_string = size_string(*size);
-        FileInfo { name, index: i, size: size_string }
+        FileInfo { name, index: *i, size: size_string }
     }).collect();
     context.insert("files", &files);
 
-    let all_size: usize = path.read().unwrap().iter().map(|state::FileInfo{size, ..}| size).sum();
+    let all_size: usize = path.iter().map(|(_, state::FileInfo{size, ..})| size).sum();
     context.insert("all_size", &size_string(all_size));
 
     tera.render(template, &context).unwrap()
@@ -129,22 +138,38 @@ pub fn size_string(size: usize) -> String {
     }
 }
 
+fn create_download_all_route(
+    tx: Sender<ServerMessage>, 
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("download-all")
+        .and(warp::addr::remote())
+        .and_then(move |ip: Option<std::net::SocketAddr>| {
+            let mut tx = tx.clone();
+            async move {
+                tx.try_send(ServerMessage::DownloadAllRequest { ip: ip.unwrap().ip() }).unwrap();
+                Ok::<_, warp::Rejection>(warp::reply::with_status("Download started", warp::http::StatusCode::OK))
+            }
+        })
+}
+
 fn create_download_route(
-    files: Arc<RwLock<Vec<state::FileInfo>>>, 
+    files: Arc<RwLock<HashMap<usize, state::FileInfo>>>, 
     tx: Sender<ServerMessage>, 
     semaphor: Arc<Mutex<HashMap<IpAddr, Arc<tokio::sync::Semaphore>>>>
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path!("download" / usize)
+    warp::path!("download" / usize / usize)
         .and(warp::addr::remote())
-        .and_then(move |index, addr: Option<std::net::SocketAddr>| {
+        .and_then(move |index, is_single, addr: Option<std::net::SocketAddr>| {
             let mut tx = tx.clone();
-            tx.try_send(ServerMessage::DownloadRequest { index, ip: addr.unwrap().ip() }).unwrap();
+            if is_single == 1 {
+                tx.try_send(ServerMessage::DownloadRequest { index, ip: addr.unwrap().ip() }).unwrap();
+            }
             let files = files.clone();
             let semaphor = semaphor.clone();
             async move {
                 let file_info: state::FileInfo = files.read()
                     .unwrap()
-                    .get(index)
+                    .get(&index)
                     .cloned()
                     .ok_or_else(|| warp::reject::not_found())?;
                 let file = File::open(&file_info.path)
