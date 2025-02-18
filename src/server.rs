@@ -52,7 +52,7 @@ pub async fn server(
                     if block_external && !is_private_ip(ip) {
                         return Err(warp::reject::reject());
                     }
-                    tx.lock().await.try_send(ServerMessage::ClientConnected { ip }).unwrap();
+                    let _ = tx.lock().await.try_send(ServerMessage::ClientConnected { ip });
                 }
                 Ok::<_, Rejection>(reply)
             }
@@ -146,7 +146,7 @@ fn create_download_all_route(
         .and_then(move |ip: Option<std::net::SocketAddr>| {
             let mut tx = tx.clone();
             async move {
-                tx.try_send(ServerMessage::DownloadAllRequest { ip: ip.unwrap().ip() }).unwrap();
+                let _ = tx.try_send(ServerMessage::DownloadAllRequest { ip: ip.unwrap().ip() });
                 Ok::<_, warp::Rejection>(warp::reply::with_status("Download started", warp::http::StatusCode::OK))
             }
         })
@@ -162,7 +162,7 @@ fn create_download_route(
         .and_then(move |index, is_single, addr: Option<std::net::SocketAddr>| {
             let mut tx = tx.clone();
             if is_single == 1 {
-                tx.try_send(ServerMessage::DownloadRequest { index, ip: addr.unwrap().ip() }).unwrap();
+                let _ = tx.try_send(ServerMessage::DownloadRequest { index, ip: addr.unwrap().ip() });
             }
             let files = files.clone();
             let semaphor = semaphor.clone();

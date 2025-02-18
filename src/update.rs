@@ -24,7 +24,7 @@ pub enum Message {
     ToggleConnectionsView,
     BlockExternalConnections(bool),
     ServerMessage(server::ServerMessage),
-    UpdateSpeed,
+    Refresh,
     ShowQrCode(bool),
     WindowEvent(iced::window::Event),
 }
@@ -213,7 +213,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
             state.transmitted_data += num_packets * 4096;
         },
 
-        Message::UpdateSpeed => {
+        Message::Refresh => {
             let mut active = 0;
             let mut downloading = 0;
 
