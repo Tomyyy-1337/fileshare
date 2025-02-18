@@ -15,6 +15,7 @@ pub enum ServerMessage {
     Downloaded { index: usize , ip: IpAddr },
     ClientConnected { ip: IpAddr },
     DownloadActive { ip: IpAddr, num_packets: usize },
+    DownloadRequest { index: usize, ip: IpAddr },
 }
 
 pub async fn server(
@@ -105,7 +106,7 @@ fn fill_template(path: Arc<RwLock<Vec<state::FileInfo>>>, template: &'static str
     let tera: Tera = Tera::new("template/*.html").unwrap();
     let mut context = tera::Context::new();
 
-    let files: Vec<FileInfo> = path.read().unwrap().iter().enumerate().map(|(i, state::FileInfo{path, size, ..})| {
+    let files: Vec<FileInfo> = path.read().unwrap().iter().enumerate().rev().map(|(i, state::FileInfo{path, size, ..})| {
         let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
         let size_string = size_string(*size);
         FileInfo { name, index: i, size: size_string }
@@ -136,7 +137,8 @@ fn create_download_route(
     warp::path!("download" / usize)
         .and(warp::addr::remote())
         .and_then(move |index, addr: Option<std::net::SocketAddr>| {
-            let tx = tx.clone();
+            let mut tx = tx.clone();
+            tx.try_send(ServerMessage::DownloadRequest { index, ip: addr.unwrap().ip() }).unwrap();
             let files = files.clone();
             let semaphor = semaphor.clone();
             async move {
@@ -172,13 +174,13 @@ struct CountingStream<S> {
     index: usize,
     ip: IpAddr,
     counter: usize,
-    last_send_time: std::time::Instant,
+    last_send_time: tokio::time::Instant,
     _permit: tokio::sync::OwnedSemaphorePermit,
 }
 
 impl<S> CountingStream<S> {
     fn new(inner: S, tx: Sender<ServerMessage>, index: usize, ip: IpAddr, permit: tokio::sync::OwnedSemaphorePermit) -> CountingStream<S> {
-        CountingStream { inner, tx, index, ip, counter: 0, last_send_time: std::time::Instant::now(), _permit: permit }
+        CountingStream { inner, tx, index, ip, counter: 0, last_send_time: tokio::time::Instant::now(), _permit: permit }
     }
 }
 
@@ -206,7 +208,7 @@ where
                     let counter = self.counter;
                     let _ = self.tx.try_send(ServerMessage::DownloadActive { ip, num_packets: counter });
                     self.counter = 0;
-                    self.last_send_time = std::time::Instant::now();
+                    self.last_send_time = tokio::time::Instant::now();
                 }
                 Poll::Ready(Some(data))
             }

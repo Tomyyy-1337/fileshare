@@ -1,4 +1,4 @@
-use std::{collections::HashMap, net::IpAddr, path::PathBuf, sync::{atomic::AtomicBool, Arc, RwLock}};
+use std::{collections::HashMap, net::IpAddr, path::PathBuf, sync::{atomic::AtomicBool, Arc, RwLock}, vec};
 use local_ip_address::local_ip;
 use iced::widget;
 use qrcode_generator::QrCodeEcc;
@@ -12,6 +12,13 @@ pub struct FileInfo {
     pub download_count: usize,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum ClientState {
+    Connected,
+    Downloading,
+    Disconnected,
+}
+
 pub struct ClientInfo {
     pub index: usize,
     pub download_count: usize,
@@ -21,6 +28,10 @@ pub struct ClientInfo {
     pub received_data: usize,
     pub speed: usize,
     pub max_speed: usize,
+    pub current_downloads: Vec<usize>,
+    pub current_downloads_size: usize,
+    pub state: ClientState,
+    pub current_download_progress: usize,
 }
 
 pub struct State {

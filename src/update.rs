@@ -3,7 +3,7 @@ use copypasta::{ClipboardContext, ClipboardProvider};
 use rfd::FileDialog;
 use iced::{stream::channel, window::Event, Size, Task};
 
-use crate::{server::{self, server, ServerMessage}, state::{ClientInfo, FileInfo, State}};
+use crate::{server::{self, server, ServerMessage}, state::{ClientInfo, ClientState, FileInfo, State}};
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -147,7 +147,11 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         },
 
         Message::ServerMessage(ServerMessage::Downloaded { index, ip }) => {
-            state.file_path.write().unwrap()[index].download_count += 1;
+            let mut filepath = state.file_path.write().unwrap();
+            if let Some(file) = filepath.get_mut(index) {
+                file.download_count += 1;
+            }
+            drop(filepath);
             state.clients.entry(ip).and_modify(|client| {
                 client.download_count += 1;
                 client.last_connection = std::time::Instant::now();
@@ -169,18 +173,22 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
                     last_download: std::time::Instant::now() - std::time::Duration::from_secs(10), 
                     received_data: 0, 
                     speed: 0, 
-                    max_speed: 0 
+                    max_speed: 0,
+                    current_downloads: Vec::new(),
+                    current_downloads_size: 0,
+                    state: ClientState::Connected,
+                    current_download_progress: 0,
                 });
+        },
 
-            state.active_connections = state.clients
-                .iter()
-                .filter(|(_, client)| client.last_connection.elapsed().as_millis() < 3500)
-                .count();
-
-            state.active_downloads = state.clients
-                .iter()
-                .filter(|(_, client)| client.last_download.elapsed().as_millis() < 3500)
-                .count();
+        Message::ServerMessage(ServerMessage::DownloadRequest { index, ip } ) => {
+            state.clients.entry(ip).and_modify(|client| {
+                client.current_downloads.push(index);
+                client.last_connection = std::time::Instant::now();
+                client.last_download = std::time::Instant::now();
+                client.current_downloads_size += state.file_path.read().unwrap().get(index).map(|file| file.size).unwrap_or(0);
+                client.state = ClientState::Downloading;
+            });
         },
 
         Message::ServerMessage(ServerMessage::DownloadActive { ip, num_packets }) => {
@@ -189,18 +197,45 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
                 client.last_download = std::time::Instant::now();
                 client.received_data += num_packets;
                 client.download_size += num_packets * 4096;
+                client.current_download_progress += num_packets * 4096;
             });
 
             state.transmitted_data += num_packets * 4096;
         },
 
         Message::UpdateSpeed => {
+            let mut active = 0;
+            let mut downloading = 0;
+
             for (_, client) in state.clients.iter_mut() {
                 client.speed = client.received_data * 4096;
                 client.received_data = 0;
                 client.max_speed = client.speed.max(client.max_speed);
+
+                if client.last_download.elapsed().as_millis() < 1000 {
+                    client.state = ClientState::Downloading;
+                    downloading += 1;
+                } else if client.last_connection.elapsed().as_millis() < 3500 {
+                    client.state = ClientState::Connected;
+                    active += 1;
+                } else {
+                    client.state = ClientState::Disconnected;
+                }
+
+                if client.state != ClientState::Downloading {
+                    client.current_downloads.clear();
+                    client.current_downloads_size = 0;
+                    client.current_download_progress = 0;
+                }
             }
             state.throughput = state.clients.iter().map(|(_, client)| client.speed).sum();
+
+            state.active_connections = active + downloading;
+
+
+
+
+            state.active_downloads = downloading;
         },
 
         Message::WindowEvent(_) => {},
@@ -249,7 +284,7 @@ fn add_files_from_path(state: &mut State, path: PathBuf) -> Option<Task<Message>
         if state.file_path.read().unwrap().iter().find(| FileInfo { path, .. }| path == &file).is_some() {
             continue;
         }
-        state.file_path.write().unwrap().insert(0, FileInfo { 
+        state.file_path.write().unwrap().push(FileInfo { 
             path: file.clone(),
             size: file.metadata().unwrap().len() as usize,
             download_count: 0,

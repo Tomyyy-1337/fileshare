@@ -87,7 +87,7 @@ fn upload_pane(state: &State) -> iced::Element<Message> {
 
         let mut files_list = column![];
 
-        for (i, state::FileInfo{path, download_count, size}) in file_path.iter().cloned().enumerate() {
+        for (i, state::FileInfo{path, download_count, size}) in file_path.iter().cloned().enumerate().rev() {
             let text_file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
             let text_file_name = text(text_file_name)
                 .size(H2_SIZE)
@@ -111,8 +111,18 @@ fn upload_pane(state: &State) -> iced::Element<Message> {
                 .width(iced::Length::FillPortion(1));
 
             let delete_button = button("Remove")
-                .on_press(Message::DeleteFile(i))
                 .width(iced::Length::FillPortion(1));
+
+            let delete_button: iced::Element<Message> = if state.active_downloads == 0 {
+                delete_button.on_press(Message::DeleteFile(i)).into()
+            } else {
+                tooltip(delete_button, container(text("Cannot delete files while downloads are active.").size(P_SIZE))
+                    .padding(10)
+                    .width(iced::Length::Fixed(200.0))
+                    .style(container::rounded_box),
+                    tooltip::Position::Right
+                ).into()
+            };
 
             let text_download_count = text!("Downloads: {}", download_count)
                 .size(P_SIZE)
@@ -163,8 +173,18 @@ fn upload_pane(state: &State) -> iced::Element<Message> {
             .height(iced::Length::Fill);
 
         let delete_all_button = button("Remove All")
-            .on_press(Message::DeleteAllFiles)
             .width(iced::Length::FillPortion(1));
+
+        let delete_all_button: iced::Element<Message> = if state.active_downloads == 0 {
+            delete_all_button.on_press(Message::DeleteAllFiles).into()
+        } else {
+            tooltip(delete_all_button, container(text("Cannot delete files while downloads are active.").size(P_SIZE))
+                .padding(10)
+                .width(iced::Length::Fixed(200.0))
+                .style(container::rounded_box),
+                tooltip::Position::Right
+            ).into()
+        };
         
         pane = pane.push(url_select_row.width(iced::Length::Fill));
         pane = pane.push(uploaded_files);
@@ -331,11 +351,14 @@ fn footer_pane(state: &State) -> iced::Element<Message> {
         .size(H2_SIZE);
 
     let mut port_text = widget::text_input("Port", &state.port_buffer)
-        .on_input(Message::PortTextUpdate)
-        .on_submit(Message::ChangePort)
         .width(iced::Length::Fixed(100.0));
 
-    let port_tooltip = match state.port_buffer.parse::<u16>() {
+    if state.active_downloads == 0 {
+        port_text = port_text.on_submit(Message::ChangePort);
+        port_text = port_text.on_input(Message::PortTextUpdate);
+    }
+
+    let mut port_tooltip = match state.port_buffer.parse::<u16>() {
         Err(_) => {
             port_text = port_text.style(|theme, status| {
                 iced::widget::text_input::Style {
@@ -360,6 +383,10 @@ fn footer_pane(state: &State) -> iced::Element<Message> {
         }
     };
 
+    if state.active_downloads > 0 {
+        port_tooltip = format!("Cannot change the port while downloads are active. (Active Port: {})", state.port);
+    }
+
     let port_tooltip = text(port_tooltip)
         .size(P_SIZE);
 
@@ -367,9 +394,9 @@ fn footer_pane(state: &State) -> iced::Element<Message> {
         port_text,
         container(port_tooltip)
             .padding(10)
-            .width(iced::Length::Fixed(400.0))
+            .width(iced::Length::Fixed(300.0))
             .style(container::rounded_box),
-        tooltip::Position::Top
+        tooltip::Position::Right
     );
 
     let text_view = text!("Connections:")
@@ -416,13 +443,11 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
     clients.sort_by_key(|(_, client_info)| Reverse(client_info.index));
 
     for (indx, (ip, client_info)) in clients.iter().enumerate() {
-        let is_active = client_info.last_connection.elapsed().as_millis() < 3500;
-        let download_active = client_info.last_download.elapsed().as_millis() < 3500;
 
-        let color = match (is_active, download_active) {
-            (true, true) => iced::Color::from_rgb8(0, 0, 255),
-            (true, false) => iced::Color::from_rgb8(0, 255, 0),
-            (false, _) => iced::Color::from_rgb8(255, 0, 0),
+        let color = match client_info.state {
+            state::ClientState::Downloading => iced::Color::from_rgb8(0, 0, 255),
+            state::ClientState::Connected => iced::Color::from_rgb8(0, 255, 0),
+            state::ClientState::Disconnected => iced::Color::from_rgb8(255, 0, 0),
         };
 
         let text_ip = text!("{}", ip.to_string())
@@ -441,13 +466,38 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
         let conection = row![text_ip, text_count]
             .align_y(iced::alignment::Vertical::Center);
 
+        let progress_bar = iced::widget::progress_bar(
+            0.0..=client_info.current_downloads_size as f32,
+            client_info.current_download_progress as f32
+        ).height(8.0);
+
+        let progress_bar = container(progress_bar)
+            .padding(2);
+
+        let mut conection = column![
+            Space::new(iced::Length::Shrink, iced::Length::Fixed(12.0)),
+            conection
+        ];
+        
+        if client_info.state == state::ClientState::Downloading {
+            conection = conection.push(progress_bar);
+        } else {
+            conection = conection.push(Space::new(iced::Length::Shrink, iced::Length::Fixed(12.0)));
+        }
+
+        let conection = row![
+            Space::new(iced::Length::Fixed(12.0), iced::Length::Shrink),
+            conection,
+            Space::new(iced::Length::Fixed(12.0), iced::Length::Shrink)
+        ];
+
         let conection = container(conection)
-            .padding(12)
+            .padding(2)
             .style(modify_style(if indx & 1 == 0 { 0.9 } else { 0.7 }));
 
-        let last_connection_text = match (client_info.last_connection.elapsed().as_millis() < 3500, client_info.last_download.elapsed().as_millis() < 3500) {
-            (true, true) => format!("Downloading at up to {}/s", size_string(client_info.max_speed)),
-            (true, false) => {
+        let last_connection_text = match client_info.state {
+            state::ClientState::Downloading => format!("Downloading at up to {}/s\nProgress: ({}/{})", size_string(client_info.max_speed), size_string(client_info.current_download_progress), size_string(client_info.current_downloads_size)),
+            state::ClientState::Connected => {
                 let last = if client_info.download_count > 0 {
                     format!("Last download {} ago \nat up to {}/s ", format_time(client_info.last_download.elapsed()), size_string(client_info.max_speed))
                 } else {
@@ -455,7 +505,7 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
                 };
                 format!("Connected.\n{}", last)
             },
-            (false, _) => {
+            state::ClientState::Disconnected => {
                 let last = if client_info.download_count > 0 {
                     format!("Last download {} ago \nat up to {}/s ", format_time(client_info.last_download.elapsed()), size_string(client_info.max_speed))
                 } else {
