@@ -176,17 +176,17 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
                 .count();
         },
 
-        Message::ServerMessage(ServerMessage::DownloadActive { ip }) => {
+        Message::ServerMessage(ServerMessage::DownloadActive { ip, num_packets }) => {
             state.clients.entry(ip).and_modify(|client| {
                 client.last_connection = std::time::Instant::now();
                 client.last_download = std::time::Instant::now();
-                client.received_data += 1;
+                client.received_data += num_packets;
             });
         },
 
         Message::UpdateSpeed => {
             for (_, client) in state.clients.iter_mut() {
-                client.speed = client.received_data * 1024 * 1024;
+                client.speed = client.received_data * 4096;
                 client.received_data = 0;
                 client.max_speed = client.speed.max(client.max_speed);
             }

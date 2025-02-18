@@ -14,7 +14,7 @@ use crate::state;
 pub enum ServerMessage {
     Downloaded { index: usize , ip: IpAddr },
     ClientConnected { ip: IpAddr },
-    DownloadActive { ip: IpAddr },
+    DownloadActive { ip: IpAddr, num_packets: usize },
 }
 
 pub async fn server(
@@ -170,11 +170,12 @@ struct CountingStream<S> {
     index: usize,
     ip: IpAddr,
     counter: usize,
+    last_send_time: std::time::Instant,
 }
 
 impl<S> CountingStream<S> {
     fn new(inner: S, tx: Sender<ServerMessage>, index: usize, ip: IpAddr) -> Self {
-        CountingStream { inner, tx, index, ip, counter: 0 }
+        CountingStream { inner, tx, index, ip, counter: 0, last_send_time: std::time::Instant::now() }
     }
 }
 
@@ -189,19 +190,19 @@ where
             Poll::Ready(None) => {
                 let index = self.index;
                 let ip = self.ip;
-                loop {
-                    match self.tx.try_send(ServerMessage::Downloaded { index, ip }) {
-                        Ok(_) => break,
-                        Err(_) => continue,
-                    }
-                }
+                let counter = self.counter;
+                let _ = self.tx.try_send(ServerMessage::DownloadActive { ip, num_packets: counter });
+                let _ = self.tx.try_send(ServerMessage::Downloaded { index, ip });
                 Poll::Ready(None)
             }
             poll @ Poll::Ready(_) => {
-                self.counter = (self.counter + 1) % 256;
-                if self.counter == 0 {
+                self.counter = self.counter + 1;
+                if self.last_send_time.elapsed().as_millis() > 1000 {
                     let ip = self.ip;
-                    let _ = self.tx.try_send(ServerMessage::DownloadActive { ip });
+                    let counter = self.counter;
+                    let _ = self.tx.try_send(ServerMessage::DownloadActive { ip, num_packets: counter });
+                    self.counter = 0;
+                    self.last_send_time = std::time::Instant::now();
                 }
                 poll
             }
