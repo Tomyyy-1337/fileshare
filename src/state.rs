@@ -13,6 +13,7 @@ pub struct FileInfo {
 }
 
 pub struct ClientInfo {
+    pub index: usize,
     pub download_count: usize,
     pub download_size: usize,
     pub last_connection: std::time::Instant,

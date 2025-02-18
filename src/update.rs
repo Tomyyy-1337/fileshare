@@ -160,10 +160,20 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         },
 
         Message::ServerMessage(ServerMessage::ClientConnected { ip }) => {
+            let len = state.clients.len();
             state.clients
                 .entry(ip)
                 .and_modify(|client| client.last_connection = std::time::Instant::now())
-                .or_insert(ClientInfo { download_count: 0, last_connection: std::time::Instant::now(), download_size: 0, last_download: std::time::Instant::now() - std::time::Duration::from_secs(10), received_data: 0, speed: 0, max_speed: 0 });
+                .or_insert(ClientInfo { 
+                    index: len,
+                    download_count: 0, 
+                    last_connection: std::time::Instant::now(), 
+                    download_size: 0, 
+                    last_download: std::time::Instant::now() - std::time::Duration::from_secs(10), 
+                    received_data: 0, 
+                    speed: 0, 
+                    max_speed: 0 
+                });
 
             state.active_connections = state.clients
                 .iter()

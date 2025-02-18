@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{cmp::Reverse, time::Duration};
 
 use iced::{border::Radius, theme::palette, widget::{self, button, checkbox, column, container, horizontal_rule, hover, row, rule::FillMode, scrollable, text, text_input::default, tooltip, Space, Theme}};
 use crate::{server::size_string, state::{self, State}, update::Message};
@@ -412,7 +412,10 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
 
     let mut connections = column![];
 
-    for (indx, (ip, client_info)) in state.clients.iter().enumerate() {
+    let mut clients = state.clients.iter().collect::<Vec<_>>();
+    clients.sort_by_key(|(_, client_info)| Reverse(client_info.index));
+
+    for (indx, (ip, client_info)) in clients.iter().enumerate() {
         let is_active = client_info.last_connection.elapsed().as_millis() < 3500;
         let download_active = client_info.last_download.elapsed().as_millis() < 3500;
 
