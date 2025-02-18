@@ -1,7 +1,7 @@
-use std::{collections::HashMap, net::IpAddr, sync::{atomic::{AtomicBool, Ordering}, Arc, Mutex, RwLock}};
+use std::{collections::HashMap, net::IpAddr, sync::{atomic::{AtomicBool, Ordering}, Arc, RwLock}};
 use serde::Serialize;
 use warp::{http::header, reject::Rejection, reply::Response, Filter};
-use tokio::fs::File;
+use tokio::{fs::File, sync::Mutex};
 use tokio_util::io::ReaderStream;
 use warp::hyper::Body;
 use tera::Tera;
@@ -48,7 +48,7 @@ pub async fn server(
                     if block_external && !is_private_ip(ip) {
                         return Err(warp::reject::reject());
                     }
-                    tx.lock().unwrap().try_send(ServerMessage::ClientConnected { ip }).unwrap();
+                    tx.lock().await.try_send(ServerMessage::ClientConnected { ip }).unwrap();
                 }
                 Ok::<_, Rejection>(reply)
             }
@@ -134,35 +134,35 @@ fn create_download_route(
     semaphor: Arc<Mutex<HashMap<IpAddr, Arc<tokio::sync::Semaphore>>>>
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("download" / usize)
-    .and(warp::addr::remote())
-    .and_then(move |index, addr: Option<std::net::SocketAddr>| {
-        let tx = tx.clone();
-        let files = files.clone();
-        let semaphor = semaphor.clone();
-        async move {
-            let file_info: state::FileInfo = files.read()
-                .unwrap()
-                .get(index)
-                .cloned()
-                .ok_or_else(|| warp::reject::not_found())?;
-            let file = File::open(&file_info.path)
-                .await
-                .map_err(|_| warp::reject::not_found())?;
-            let semaphor = semaphor.lock().unwrap()
-                .entry(addr.unwrap().ip())
-                .or_insert_with(|| Arc::new(tokio::sync::Semaphore::new(3)))
-                .clone();
-            let permit = semaphor.acquire_owned().await.unwrap();
-            let stream = CountingStream::new(ReaderStream::new(file), tx, index, addr.unwrap().ip(), permit);
-            let body = Body::wrap_stream(stream);
-            let response = warp::reply::with_header(
-                Response::new(body), 
-                header::CONTENT_DISPOSITION, 
-                format!("attachment; filename=\"{}\"", 
-                file_info.path.file_name().unwrap().to_str().unwrap()
-            ));
-            Ok::<_, warp::Rejection>(warp::reply::with_header(response, "Connection", "close"))
-        }
+        .and(warp::addr::remote())
+        .and_then(move |index, addr: Option<std::net::SocketAddr>| {
+            let tx = tx.clone();
+            let files = files.clone();
+            let semaphor = semaphor.clone();
+            async move {
+                let file_info: state::FileInfo = files.read()
+                    .unwrap()
+                    .get(index)
+                    .cloned()
+                    .ok_or_else(|| warp::reject::not_found())?;
+                let file = File::open(&file_info.path)
+                    .await
+                    .map_err(|_| warp::reject::not_found())?;
+                let semaphor = semaphor.lock().await
+                    .entry(addr.unwrap().ip())
+                    .or_insert_with(|| Arc::new(tokio::sync::Semaphore::new(3)))
+                    .clone();
+                let permit = semaphor.acquire_owned().await.unwrap();
+                let stream = CountingStream::new(ReaderStream::new(file), tx, index, addr.unwrap().ip(), permit);
+                let body = Body::wrap_stream(stream);
+                let response = warp::reply::with_header(
+                    Response::new(body), 
+                    header::CONTENT_DISPOSITION, 
+                    format!("attachment; filename=\"{}\"", 
+                    file_info.path.file_name().unwrap().to_str().unwrap()
+                ));
+                Ok::<_, warp::Rejection>(warp::reply::with_header(response, "Connection", "close"))
+            }
     })
 }
 
