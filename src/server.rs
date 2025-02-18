@@ -50,7 +50,7 @@ pub async fn server(
                     }
                     tx.lock().unwrap().try_send(ServerMessage::ClientConnected { ip }).unwrap();
                 }
-                Ok::<_, Rejection>(warp::reply::with_header(reply, "Connection", "close"))
+                Ok::<_, Rejection>(reply)
             }
         });
 
@@ -140,11 +140,6 @@ fn create_download_route(
         let files = files.clone();
         let semaphor = semaphor.clone();
         async move {
-            let semaphor = semaphor.lock().unwrap()
-                .entry(addr.unwrap().ip())
-                .or_insert_with(|| Arc::new(tokio::sync::Semaphore::new(3)))
-                .clone();
-
             let file_info: state::FileInfo = files.read()
                 .unwrap()
                 .get(index)
@@ -153,6 +148,10 @@ fn create_download_route(
             let file = File::open(&file_info.path)
                 .await
                 .map_err(|_| warp::reject::not_found())?;
+            let semaphor = semaphor.lock().unwrap()
+                .entry(addr.unwrap().ip())
+                .or_insert_with(|| Arc::new(tokio::sync::Semaphore::new(3)))
+                .clone();
             let permit = semaphor.acquire_owned().await.unwrap();
             let stream = CountingStream::new(ReaderStream::new(file), tx, index, addr.unwrap().ip(), permit);
             let body = Body::wrap_stream(stream);
@@ -162,7 +161,7 @@ fn create_download_route(
                 format!("attachment; filename=\"{}\"", 
                 file_info.path.file_name().unwrap().to_str().unwrap()
             ));
-            Ok::<_, warp::Rejection>(response)
+            Ok::<_, warp::Rejection>(warp::reply::with_header(response, "Connection", "close"))
         }
     })
 }
