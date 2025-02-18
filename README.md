@@ -1,7 +1,7 @@
 # File share
 Share files in local network or over the internet. 
 
-![Imgur](https://i.imgur.com/l3EtobN.png)
+![Imgur](https://i.imgur.com/TpNhsmU.png)
 
 ### Run with
 ```
