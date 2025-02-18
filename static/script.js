@@ -40,6 +40,34 @@ document.getElementById('downloadAll').addEventListener('click', async () => {
     button.disabled = false;
 });
 
+document.addEventListener('DOMContentLoaded', function() {
+    const downloadLinks = document.querySelectorAll('.download_single');
+
+    downloadLinks.forEach(link => {
+        link.addEventListener('click', async function(event) {
+            event.preventDefault();
+            const url = this.href;
+            const fileName = this.previousElementSibling.textContent.trim();
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const blob = await response.blob();
+                const link = document.createElement('a');
+                link.href = window.URL.createObjectURL(blob);
+                link.download = fileName;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } catch (error) {
+                console.error('There has been a problem with your fetch operation:', error);
+            }
+        });
+    });
+});
+
 async function downloadFile(link) {
     const url = link.href;
 
@@ -82,3 +110,4 @@ async function updateContent() {
         document.getElementById('fileList').innerHTML = "<h2>No Files available</h2>";
     }
 }
+
