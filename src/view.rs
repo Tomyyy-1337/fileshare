@@ -410,11 +410,9 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
         .align_x(iced::alignment::Horizontal::Center)
         .width(iced::Length::Fill);
 
-    let mut connections = column![]
-        .spacing(5)
-        .padding(12);
+    let mut connections = column![];
 
-    for (ip, client_info) in state.clients.iter() {
+    for (indx, (ip, client_info)) in state.clients.iter().enumerate() {
         let is_active = client_info.last_connection.elapsed().as_millis() < 3500;
         let download_active = client_info.last_download.elapsed().as_millis() < 3500;
 
@@ -439,6 +437,10 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
 
         let conection = row![text_ip, text_count]
             .align_y(iced::alignment::Vertical::Center);
+
+        let conection = container(conection)
+            .padding(12)
+            .style(modify_style(if indx & 1 == 0 { 0.9 } else { 0.7 }));
 
         let last_connection_text = match (client_info.last_connection.elapsed().as_millis() < 3500, client_info.last_download.elapsed().as_millis() < 3500) {
             (true, true) => format!("Downloading at up to {}/s", size_string(client_info.max_speed)),
@@ -483,7 +485,9 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
         .style(modify_style(0.6));
 
     let stats_text = text!("Stats")
-        .size(H2_SIZE);
+        .size(H1_SIZE)
+        .width(iced::Length::Fill)
+        .align_x(iced::alignment::Horizontal::Center);
 
     let name_column = column![
         text("Active Downloads:").size(P_SIZE).width(iced::Length::Shrink),
@@ -506,7 +510,8 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
     .spacing(5);
 
     let stats_row = row![name_column, value_column]
-        .spacing(5);
+        .spacing(5)
+        .width(iced::Length::Fill);
 
     let connections = column![
         text_connections, 

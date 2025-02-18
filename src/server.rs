@@ -1,4 +1,4 @@
-use std::{net::IpAddr, path::Path, sync::{atomic::{AtomicBool, Ordering}, Arc, Mutex, RwLock}};
+use std::{net::IpAddr, sync::{atomic::{AtomicBool, Ordering}, Arc, Mutex, RwLock}};
 use serde::Serialize;
 use warp::{http::header, reject::Rejection, reply::Response, Filter};
 use tokio::fs::File;
