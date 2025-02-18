@@ -1,4 +1,4 @@
-use std::{net::IpAddr, sync::{atomic::{AtomicBool, Ordering}, Arc, Mutex, RwLock}};
+use std::{collections::HashMap, net::IpAddr, sync::{atomic::{AtomicBool, Ordering}, Arc, Mutex, RwLock}};
 use serde::Serialize;
 use warp::{http::header, reject::Rejection, reply::Response, Filter};
 use tokio::fs::File;
@@ -24,10 +24,12 @@ pub async fn server(
     tx: Sender<ServerMessage>,
     block_external_connections: Arc<AtomicBool>)
 {
+    let semaphors: Arc<Mutex<HashMap<IpAddr, Arc<tokio::sync::Semaphore>>>> = Arc::new(Mutex::new(HashMap::<IpAddr, Arc<tokio::sync::Semaphore>>::new()));
+
     let html_route = create_index_route(path.clone());
     let update_route = create_refresh_route(path.clone());
     let static_route = create_static_route();
-    let download_route = create_download_route(path, tx.clone());
+    let download_route = create_download_route(path, tx.clone(), semaphors.clone());
     
     let tx = Arc::new(Mutex::new(tx.clone()));
     let block_external = block_external_connections.clone();
@@ -129,14 +131,20 @@ pub fn size_string(size: usize) -> String {
 fn create_download_route(
     files: Arc<RwLock<Vec<state::FileInfo>>>, 
     tx: Sender<ServerMessage>, 
+    semaphor: Arc<Mutex<HashMap<IpAddr, Arc<tokio::sync::Semaphore>>>>
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("download" / usize)
     .and(warp::addr::remote())
     .and_then(move |index, addr: Option<std::net::SocketAddr>| {
         let tx = tx.clone();
         let files = files.clone();
-
+        let semaphor = semaphor.clone();
         async move {
+            let semaphor = semaphor.lock().unwrap()
+                .entry(addr.unwrap().ip())
+                .or_insert_with(|| Arc::new(tokio::sync::Semaphore::new(3)))
+                .clone();
+
             let file_info: state::FileInfo = files.read()
                 .unwrap()
                 .get(index)
@@ -145,7 +153,8 @@ fn create_download_route(
             let file = File::open(&file_info.path)
                 .await
                 .map_err(|_| warp::reject::not_found())?;
-            let stream = CountingStream::new(ReaderStream::new(file), tx, index, addr.unwrap().ip());
+            let permit = semaphor.acquire_owned().await.unwrap();
+            let stream = CountingStream::new(ReaderStream::new(file), tx, index, addr.unwrap().ip(), permit);
             let body = Body::wrap_stream(stream);
             let response = warp::reply::with_header(
                 Response::new(body), 
@@ -165,11 +174,12 @@ struct CountingStream<S> {
     ip: IpAddr,
     counter: usize,
     last_send_time: std::time::Instant,
+    _permit: tokio::sync::OwnedSemaphorePermit,
 }
 
 impl<S> CountingStream<S> {
-    fn new(inner: S, tx: Sender<ServerMessage>, index: usize, ip: IpAddr) -> Self {
-        CountingStream { inner, tx, index, ip, counter: 0, last_send_time: std::time::Instant::now() }
+    fn new(inner: S, tx: Sender<ServerMessage>, index: usize, ip: IpAddr, permit: tokio::sync::OwnedSemaphorePermit) -> CountingStream<S> {
+        CountingStream { inner, tx, index, ip, counter: 0, last_send_time: std::time::Instant::now(), _permit: permit }
     }
 }
 
@@ -192,7 +202,7 @@ where
             Poll::Ready(Some(Err(_))) => Poll::Ready(None),
             Poll::Ready(Some(data)) => {
                 self.counter += 1;
-                if self.last_send_time.elapsed().as_millis() > 1000 {
+                if self.last_send_time.elapsed().as_millis() > 250 {
                     let ip = self.ip;
                     let counter = self.counter;
                     let _ = self.tx.try_send(ServerMessage::DownloadActive { ip, num_packets: counter });

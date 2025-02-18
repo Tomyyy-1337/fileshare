@@ -1,5 +1,5 @@
 use iced::keyboard::key::Named;
-use iced::{keyboard, window, Size, Subscription};
+use iced::{keyboard, window, Subscription};
 use crate::state::State;
 
 use crate::update::Message;
@@ -17,11 +17,9 @@ pub fn subscription(state: &State) -> Subscription<Message> {
 }
 
 fn window_events() -> Subscription<Message> {
-    window::events().map(|(_, event)| match event {
-        window::Event::FileDropped(path) => Message::AddFiles(path),
-        window::Event::Resized(Size { width, height }) => Message::Resize(width, height),
-        _ => Message::None,
-    })
+    window::events().map(|(_, event)| 
+        Message::WindowEvent(event)
+    )
 }
 
 fn keyboard_input(_state: &State) -> Subscription<Message> {

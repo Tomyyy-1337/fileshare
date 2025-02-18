@@ -1,7 +1,7 @@
 use std::{path::PathBuf, process::Command, thread::sleep};
 use copypasta::{ClipboardContext, ClipboardProvider};
 use rfd::FileDialog;
-use iced::{stream::channel, Task};
+use iced::{stream::channel, window::Event, Size, Task};
 
 use crate::{server::{self, server, ServerMessage}, state::{ClientInfo, FileInfo, State}};
 
@@ -11,7 +11,6 @@ pub enum Message {
     CopyUrl,
     None,
     OpenInBrowser,
-    AddFiles(std::path::PathBuf),
     DeleteFile(usize),
     OpenFile(usize),
     ShowInExplorer(usize),
@@ -22,12 +21,12 @@ pub enum Message {
     PublicIp,
     ChangePort,
     PortTextUpdate(String),
-    Resize(f32, f32),
     ToggleConnectionsView,
     BlockExternalConnections(bool),
     ServerMessage(server::ServerMessage),
     UpdateSpeed,
     ShowQrCode(bool),
+    WindowEvent(iced::window::Event),
 }
 
 pub fn update(state: &mut State, message: Message) -> Task<Message> {
@@ -139,21 +138,19 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
             } 
         },
         
-        Message::Resize(width, height)=> state.size = (width as f32, height as f32),
+        Message::WindowEvent(Event::Resized(Size { width, height })) => state.size = (width as f32, height as f32),
 
-        Message::AddFiles(path) => {
+        Message::WindowEvent(Event::FileDropped(path)) => {
             if let Some(task) = add_files_from_path(state, path) {
                 return task;
             }
         },
 
         Message::ServerMessage(ServerMessage::Downloaded { index, ip }) => {
-            state.transmitted_data += state.file_path.read().unwrap()[index].size;
             state.file_path.write().unwrap()[index].download_count += 1;
             state.clients.entry(ip).and_modify(|client| {
                 client.download_count += 1;
                 client.last_connection = std::time::Instant::now();
-                client.download_size += state.file_path.read().unwrap()[index].size;
             });
 
             state.total_downloads += 1;
@@ -191,7 +188,10 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
                 client.last_connection = std::time::Instant::now();
                 client.last_download = std::time::Instant::now();
                 client.received_data += num_packets;
+                client.download_size += num_packets * 4096;
             });
+
+            state.transmitted_data += num_packets * 4096;
         },
 
         Message::UpdateSpeed => {
@@ -203,6 +203,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
             state.throughput = state.clients.iter().map(|(_, client)| client.speed).sum();
         },
 
+        Message::WindowEvent(_) => {},
         Message::None => {}
     }
 
