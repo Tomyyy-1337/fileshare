@@ -126,42 +126,36 @@ pub fn size_string(size: usize) -> String {
     }
 }
 
-fn create_download_route(files: Arc<RwLock<Vec<state::FileInfo>>>, tx: Sender<ServerMessage>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+fn create_download_route(
+    files: Arc<RwLock<Vec<state::FileInfo>>>, 
+    tx: Sender<ServerMessage>, 
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("download" / usize)
-        .and(warp::addr::remote())
-        .and_then(move |index, addr: Option<std::net::SocketAddr>| {
-            let tx = tx.clone();
-            let files = files.clone();
-            async move {
-                let file_info = {
-                    let files = files.read().unwrap();
-                    if index >= files.len() {
-                        return Err(warp::reject::not_found());
-                    }
-                    files.get(index).cloned().unwrap()
-                };
+    .and(warp::addr::remote())
+    .and_then(move |index, addr: Option<std::net::SocketAddr>| {
+        let tx = tx.clone();
+        let files = files.clone();
 
-                let state::FileInfo { path, .. } = file_info;
-                let file_name = Path::new(&path)
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .ok_or_else(|| warp::reject::not_found())?;
-
-                let file = File::open(&path).await.map_err(|_| warp::reject::not_found())?;
-                let stream = ReaderStream::new(file);
-                let counting_stream = CountingStream::new(stream, tx, index, addr.unwrap().ip());
-                let body = Body::wrap_stream(counting_stream);
-                let response = Response::new(body);
-
-                let response = warp::reply::with_header(
-                    response,
-                    header::CONTENT_DISPOSITION,
-                    format!("attachment; filename=\"{}\"", file_name),
-                );
-
-                Ok::<_, warp::Rejection>(response)
-            }
-        })
+        async move {
+            let file_info: state::FileInfo = files.read()
+                .unwrap()
+                .get(index)
+                .cloned()
+                .ok_or_else(|| warp::reject::not_found())?;
+            let file = File::open(&file_info.path)
+                .await
+                .map_err(|_| warp::reject::not_found())?;
+            let stream = CountingStream::new(ReaderStream::new(file), tx, index, addr.unwrap().ip());
+            let body = Body::wrap_stream(stream);
+            let response = warp::reply::with_header(
+                Response::new(body), 
+                header::CONTENT_DISPOSITION, 
+                format!("attachment; filename=\"{}\"", 
+                file_info.path.file_name().unwrap().to_str().unwrap()
+            ));
+            Ok::<_, warp::Rejection>(response)
+        }
+    })
 }
 
 struct CountingStream<S> {
@@ -195,8 +189,9 @@ where
                 let _ = self.tx.try_send(ServerMessage::Downloaded { index, ip });
                 Poll::Ready(None)
             }
-            poll @ Poll::Ready(_) => {
-                self.counter = self.counter + 1;
+            Poll::Ready(Some(Err(_))) => Poll::Ready(None),
+            Poll::Ready(Some(data)) => {
+                self.counter += 1;
                 if self.last_send_time.elapsed().as_millis() > 1000 {
                     let ip = self.ip;
                     let counter = self.counter;
@@ -204,9 +199,9 @@ where
                     self.counter = 0;
                     self.last_send_time = std::time::Instant::now();
                 }
-                poll
+                Poll::Ready(Some(data))
             }
-            other => other,
+            p @ Poll::Pending => p,
         }
     }
 }
