@@ -77,6 +77,12 @@ impl CustomStyles {
         move |theme, status| {
             iced::widget::text_input::Style {
                 background: iced::Background::Color(color),
+                icon: theme.palette().primary,
+                border: border::Border {
+                    color: theme.palette().primary,
+                    width: 1.2,
+                    radius: Radius::from(1.0)
+                },
                 ..widget::text_input::default(theme, status)               
             }
         }
@@ -106,7 +112,7 @@ impl CustomStyles {
             border: border::Border { 
                 color: theme.palette().primary,
                 width: 1.2,
-                radius: Radius::from(1.0)
+                radius: Radius::from(1.0),
             }
         }
     }

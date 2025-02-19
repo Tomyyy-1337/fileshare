@@ -332,6 +332,7 @@ fn footer_pane(state: &State) -> iced::Element<Message> {
             format!("Press Enter to change the port. (Active Port: {})", state.port)
         }  
         _ => {
+            port_text = port_text.style(CustomStyles::textfield_background(state.theme.get().palette().background)); 
             "Change the port the server is running on. If you want to serve the files on the internet, make sure to open the port in your router settings.".to_owned()
         }
     };
