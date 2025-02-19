@@ -30,7 +30,6 @@ pub enum Message {
 }
 
 pub fn update(state: &mut State, message: Message) -> Task<Message> {
-    println!("{:?}", message);
     match message {
         Message::ToggleDarkMode => state.dark_mode = !state.dark_mode,
 
@@ -210,7 +209,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
             state.clients.entry(ip).and_modify(|client| {
                 client.last_connection = std::time::Instant::now();
                 client.last_download = std::time::Instant::now();
-                client.received_data += num_packets;
+                client.received_data += num_packets * 4096;
                 client.download_size += num_packets * 4096;
                 client.current_download_progress += num_packets * 4096;
                 client.state = ClientState::Downloading;
@@ -224,7 +223,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
             let mut downloading = 0;
 
             for (_, client) in state.clients.iter_mut() {
-                client.speed = client.received_data * 4096;
+                client.speed = client.received_data;
                 client.received_data = 0;
                 client.max_speed = client.speed.max(client.max_speed);
 
