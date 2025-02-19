@@ -1,5 +1,5 @@
-use std::{collections::HashMap, net::IpAddr, sync::{atomic::{AtomicBool, Ordering}, Arc, RwLock}, thread::current};
-use iced::{theme, Theme};
+use std::{collections::HashMap, net::IpAddr, sync::{atomic::{AtomicBool, Ordering}, Arc, RwLock}};
+use iced::{advanced::graphics::text, theme, Color, Theme};
 use serde::Serialize;
 use warp::{http::header, reject::Rejection, reply::Response, Filter};
 use tokio::{fs::File, sync::Mutex};
@@ -9,7 +9,7 @@ use tera::Tera;
 use futures::{channel::mpsc::Sender, stream::Stream};
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use crate::state;
+use crate::{state, styles::color_multiply};
 
 #[derive(Debug, Clone)]
 pub enum ServerMessage {
@@ -30,7 +30,7 @@ pub async fn server(
 ) {
     let semaphors: Arc<Mutex<HashMap<IpAddr, Arc<tokio::sync::Semaphore>>>> = Arc::new(Mutex::new(HashMap::<IpAddr, Arc<tokio::sync::Semaphore>>::new()));
 
-    let html_route = create_index_route(path.clone());
+    let html_route = create_index_route(path.clone(), theme.clone());
     let update_route = create_refresh_route(path.clone(), theme.clone());
     let static_route = create_static_route();
     let download_route = create_download_route(path, tx.clone(), semaphors.clone());
@@ -79,11 +79,15 @@ fn create_static_route() -> impl Filter<Extract = impl warp::Reply, Error = warp
         .and(warp::fs::dir("./static"))
 }
 
-fn create_index_route(path: Arc<RwLock<HashMap<usize, state::FileInfo>>>, ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+fn create_index_route(
+    path: Arc<RwLock<HashMap<usize, state::FileInfo>>>, 
+    theme: Arc<RwLock<Theme>>
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone 
+{
     let html_route = warp::path("index")
         .map(move || {
             let path = path.clone();
-            let html_str = fill_template(path, "index.html");
+            let html_str = fill_template(path, "index.html", theme.clone());
             let response = warp::reply::html(html_str);
             response
         });
@@ -92,11 +96,14 @@ fn create_index_route(path: Arc<RwLock<HashMap<usize, state::FileInfo>>>, ) -> i
 
 #[derive(Serialize)]
 struct UpdateData {
-    size: String,
     html: String,
+    size: String,
     primary: SendColor,
+    secondary: SendColor,
     background: SendColor,
+    dark_background: SendColor,
     text: SendColor,
+    text_secondary: SendColor,
 }
 
 #[derive(Serialize)]
@@ -111,6 +118,23 @@ fn color_to_arr (color: iced::Color) -> SendColor {
     SendColor { r, g, b }
 }
 
+fn colors(theme: &Theme) -> (SendColor, SendColor, SendColor, SendColor, SendColor, SendColor) {
+    let primary = color_to_arr(theme.palette().primary);
+    let secondary = color_to_arr(color_multiply(theme.palette().primary, 0.8));
+    let background = color_to_arr(theme.palette().background);
+    let dark_background = color_to_arr(color_multiply(theme.palette().background, 0.8));
+    let text = color_to_arr(theme.palette().text);
+    let text_secondary = color_to_arr({
+        let iced::Color { r, g, b, .. } = theme.palette().primary;
+        if r + g + b > 1.5 {
+            iced::Color::BLACK
+        } else {
+            iced::Color::WHITE
+        }
+    });
+    (primary, secondary, background, dark_background, text, text_secondary)
+}
+
 fn create_refresh_route(
     path: Arc<RwLock<HashMap<usize, state::FileInfo>>>,
     theme: Arc<RwLock<Theme>>
@@ -118,21 +142,29 @@ fn create_refresh_route(
 {
     let refresh_route = warp::path("update-content")
         .map(move || {
-            let html = fill_template(path.clone(), "file_list.html");
+            let html = fill_template(path.clone(), "file_list.html", theme.clone());
             let theme = theme.read().unwrap();
+            let (primary, secondary, background, dark_background, text, text_secondary) = colors(&theme);
             let response = warp::reply::json(&UpdateData {
+                html,
                 size: size_string(path.read().unwrap().iter().map(|(_, state::FileInfo{size, ..})| size).sum()),
-                primary: color_to_arr(theme.palette().primary),
-                background: color_to_arr(theme.palette().background),
-                text: color_to_arr(theme.palette().text),
-                html
+                primary,
+                secondary,
+                background,
+                dark_background,
+                text,
+                text_secondary
             });
             response
         });
     refresh_route
 }
 
-fn fill_template(path: Arc<RwLock<HashMap<usize, state::FileInfo>>>, template: &'static str) -> String {
+fn fill_template(
+    path: Arc<RwLock<HashMap<usize, state::FileInfo>>>, 
+    template: &'static str,
+    theme: Arc<RwLock<Theme>>
+) -> String {
     let tera: Tera = Tera::new("template/*.html").unwrap();
     let mut context = tera::Context::new();
 
@@ -152,7 +184,21 @@ fn fill_template(path: Arc<RwLock<HashMap<usize, state::FileInfo>>>, template: &
     let all_size: usize = path.iter().map(|(_, state::FileInfo{size, ..})| size).sum();
     context.insert("all_size", &size_string(all_size));
 
+    let theme = theme.read().unwrap();
+    let (primary, secondary, background, dark_background, text, text_secondary) = colors(&theme);
+    context.insert("primary", &to_rgb_string(primary));
+    context.insert("secondary", &secondary);
+    context.insert("background", &background);
+    context.insert("dark_background", &dark_background);
+    context.insert("text", &text);
+    context.insert("text_secondary", &text_secondary);
+
     tera.render(template, &context).unwrap()
+}
+
+fn to_rgb_string(color: SendColor) -> String {
+    let SendColor { r, g, b } = color;
+    format!("rgb({}, {}, {})", r, g, b)
 }
 
 pub fn size_string(size: usize) -> String {

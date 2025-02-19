@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::{read_to_string, File}, io::Write, net::IpAddr, path::PathBuf, sync::{atomic::AtomicBool, Arc, Mutex, RwLock}, vec};
+use std::{collections::HashMap, fs::{read_to_string, File}, io::Write, net::IpAddr, path::PathBuf, sync::{atomic::AtomicBool, Arc, RwLock}, vec};
 use local_ip_address::local_ip;
 use iced::{theme::{Custom, Palette}, widget, Theme};
 use qrcode_generator::QrCodeEcc;

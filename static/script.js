@@ -80,8 +80,8 @@ function getFileNameFromContentDisposition(contentDisposition) {
     return fileNameMatch ? fileNameMatch[1] : 'unknown';
 }
 
-function to_color(r, g, b) {
-    return 'rgb(' + r + ', ' + g + ', ' + b + ')';
+function to_color(color) {
+    return 'rgb(' + color.r + ', ' + color.g + ', ' + color.b + ')';
 }
 
 async function updateContent() {
@@ -91,28 +91,13 @@ async function updateContent() {
         const json = await response.json();
         let html = json.html;
         let size = json.size;
-        let primary = json.primary;
-        let darker_primary = {r: Math.floor(primary.r * 0.8), g: Math.floor(primary.g * 0.8), b: Math.floor(primary.b * 0.8)};
-        let primary_color = to_color(primary.r, primary.g, primary.b);
-        let darker_primary_color = to_color(darker_primary.r, darker_primary.g, darker_primary.b);
-        let background = json.background;
-        let background_darker = {r: Math.floor(background.r * 0.8), g: Math.floor(background.g * 0.8), b: Math.floor(background.b * 0.8)};
-        let background_color = to_color(background.r, background.g, background.b);
-        let background_darker_color = to_color(background_darker.r, background_darker.g, background_darker.b);
-        let text = json.text;
-        let text_inverse = {r: 255, g: 255, b: 255};
-        if ((primary.r + primary.g + primary.b) > 382) {
-            text_inverse = {r: 0, g: 0, b: 0};
-        } 
-        let text_color = to_color(text.r, text.g, text.b);
-        let text_inverse_color = to_color(text_inverse.r, text_inverse.g, text_inverse.b);
 
-        document.documentElement.style.setProperty('--primary-color', primary_color);
-        document.documentElement.style.setProperty('--secondary-color', darker_primary_color);
-        document.documentElement.style.setProperty('--background-color', background_color);
-        document.documentElement.style.setProperty('--background-color-2', background_darker_color);
-        document.documentElement.style.setProperty('--text-color', text_color);
-        document.documentElement.style.setProperty('--text-color-2', text_inverse_color);
+        document.documentElement.style.setProperty('--primary-color', to_color(json.primary));
+        document.documentElement.style.setProperty('--secondary-color', to_color(json.secondary));
+        document.documentElement.style.setProperty('--background-color', to_color(json.background));
+        document.documentElement.style.setProperty('--background-color-2', to_color(json.dark_background));
+        document.documentElement.style.setProperty('--text-color', to_color(json.text));
+        document.documentElement.style.setProperty('--text-color-2', to_color(json.text_secondary));
         allSize = size;
         document.getElementById('fileList').innerHTML = html;
         document.getElementById('downloadAll').textContent = "Download All Files (" + size + ")";
