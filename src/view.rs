@@ -1,6 +1,6 @@
 use std::{cmp::Reverse, time::Duration};
 
-use iced::{border::Radius, theme::palette, widget::{self, button, checkbox, column, container, horizontal_rule, hover, row, rule::FillMode, scrollable::{Rail, Scroller}, text, text_input::default, tooltip, Space, Theme}};
+use iced::{border::Radius, theme::palette, widget::{self, button, checkbox, column, container, horizontal_rule, hover, row, rule::FillMode, scrollable::{Rail, Scroller}, text, text_input::default, tooltip, Space, Theme}, Border};
 use crate::{server::size_string, state::{self, State}, update::Message};
 
 const H1_SIZE: u16 = 30;
@@ -488,7 +488,18 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
         let progress_bar = iced::widget::progress_bar(
             0.0..=client_info.current_downloads_size as f32,
             client_info.current_download_progress as f32
-        ).height(8.0);
+        ).height(8.0)
+        .style(|theme: &Theme|{
+            iced::widget::progress_bar::Style {
+                background: iced::Background::Color(color_multiply(theme.palette().background, 0.6)),
+                bar: iced::Background::Color(theme.palette().primary),
+                border: Border {
+                    color: iced::Color::TRANSPARENT,
+                    width: 0.0,
+                    radius: Radius::from(5.0)
+                },
+            }
+        });
 
         let progress_bar = container(progress_bar)
             .padding(2);
