@@ -17,6 +17,8 @@ mod server;
 use subscriptions::subscription;
 mod subscriptions;
 
+mod styles;
+
 fn main() -> iced::Result { 
     iced::application("Fileshare", update, view)
         .subscription(subscription)

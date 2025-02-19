@@ -1,7 +1,7 @@
 use std::{cmp::Reverse, time::Duration};
 
-use iced::{border::Radius, theme::palette, widget::{self, button, checkbox, column, container, horizontal_rule, hover, row, rule::FillMode, scrollable::{Rail, Scroller}, text, text_input::default, tooltip, Space, Theme}, Border};
-use crate::{server::size_string, state::{self, State}, update::Message};
+use iced::widget::{self, button, checkbox, column, container, horizontal_rule, hover, row, text, tooltip, Space};
+use crate::{server::size_string, state::{self, State}, styles::CustomStyles, update::Message};
 
 const H1_SIZE: u16 = 30;
 const H2_SIZE: u16 = 20;
@@ -60,15 +60,7 @@ fn upload_pane(state: &State) -> iced::Element<Message> {
 
     let mut pane = column![
         upload_files,
-        horizontal_rule(5)
-            .style(|theme: &Theme| {
-                iced::widget::rule::Style {
-                    fill_mode: FillMode::Full,
-                    color: theme.palette().primary,
-                    width: 1,
-                    radius: Radius::default(),
-                }
-            }),
+        horizontal_rule(5).style(CustomStyles::horizontal_rule),
     ]
     .padding(5)
     .spacing(10)
@@ -148,7 +140,7 @@ fn upload_pane(state: &State) -> iced::Element<Message> {
             .spacing(5);
 
             let row = container(row)
-                .style(modify_style(if i & 1 == 0 { 0.9 } else { 0.7 }));
+                .style(CustomStyles::darker_background(if i & 1 == 0 { 0.9 } else { 0.7 }));
 
             let title_row = row![text_file_name, meta_col]
                 .spacing(5)
@@ -162,7 +154,7 @@ fn upload_pane(state: &State) -> iced::Element<Message> {
 
             let col = container(col)
                 .padding(12)
-                .style(modify_style(if color & 1 == 0 { 0.9 } else { 0.7 }));
+                .style(CustomStyles::darker_background(if color & 1 == 0 { 0.9 } else { 0.7 }));
 
             let col = hover(col, column![
                 Space::new(iced::Length::Fill, iced::Length::Fill),
@@ -174,22 +166,7 @@ fn upload_pane(state: &State) -> iced::Element<Message> {
 
         let files_list = iced::widget::scrollable(files_list)
             .height(iced::Length::Fill)
-            .style(|theme, _status| 
-                iced::widget::scrollable::Style {
-                    container: container::Style::default(),
-                    vertical_rail: Rail {
-                        background: None,
-                        border: iced::Border { color: iced::Color::TRANSPARENT, width: 0.0, radius: Radius::default() },
-                        scroller: Scroller { color: theme.palette().primary, border: iced::Border { color: iced::Color::TRANSPARENT, width:  2.0, radius: Radius::from(5) } },
-                    },
-                    horizontal_rail: iced::widget::scrollable::Rail {
-                        background: None,
-                        border: iced::Border { color: iced::Color::TRANSPARENT, width: 0.0, radius: Radius::default() },
-                        scroller: Scroller { color: iced::Color::TRANSPARENT, border: iced::Border { color: iced::Color::TRANSPARENT, width: 0.0, radius: Radius::default() } },
-                    },
-                    gap: None,
-                }
-            );
+            .style(CustomStyles::scrollable);
 
         let delete_all_button = button("Remove All")
             .width(iced::Length::FillPortion(1));
@@ -207,15 +184,7 @@ fn upload_pane(state: &State) -> iced::Element<Message> {
         
         pane = pane.push(url_select_row.width(iced::Length::Fill));
         pane = pane.push(uploaded_files);
-        pane = pane.push(horizontal_rule(5)
-            .style(|theme: &Theme| {
-                iced::widget::rule::Style {
-                    fill_mode: FillMode::Full,
-                    color: theme.palette().primary,
-                    width: 1,
-                    radius: Radius::default(),
-                }
-            }),
+        pane = pane.push(horizontal_rule(5).style(CustomStyles::horizontal_rule)
         );
         pane = pane.push(files_list);
         pane = pane.push(delete_all_button);
@@ -229,7 +198,7 @@ fn upload_pane(state: &State) -> iced::Element<Message> {
     }
 
     let upload_pane = container(pane)
-        .style(modify_style(0.8))
+        .style(CustomStyles::darker_background(0.8))
         .width(iced::Length::FillPortion(3))
         .height(iced::Length::FillPortion(1))
         .padding(5);
@@ -305,15 +274,7 @@ fn download_pane(state: &State) -> iced::Element<Message> {
 
     let mut download_pane = column![
         url_text,
-        horizontal_rule(5)
-            .style(|theme: &Theme| {
-                iced::widget::rule::Style {
-                    fill_mode: FillMode::Full,
-                    color: theme.palette().primary,
-                    width: 1,
-                    radius: Radius::default(),
-                }
-            }),
+        horizontal_rule(5).style(CustomStyles::horizontal_rule),
         text_mode,
         select_row,
         block_external_connections,
@@ -329,29 +290,13 @@ fn download_pane(state: &State) -> iced::Element<Message> {
     .align_x(iced::alignment::Horizontal::Center);
 
     if state.show_qr_code {
-        download_pane = download_pane.push(horizontal_rule(5)
-            .style(|theme: &Theme| {
-                iced::widget::rule::Style {
-                    fill_mode: FillMode::Full,
-                    color: theme.palette().primary,
-                    width: 1,
-                    radius: Radius::default(),
-                }
-            }));
+        download_pane = download_pane.push(horizontal_rule(5).style(CustomStyles::horizontal_rule));
         download_pane = download_pane.push(image);
-        download_pane = download_pane.push(horizontal_rule(5)
-            .style(|theme: &Theme| {
-                iced::widget::rule::Style {
-                    fill_mode: FillMode::Full,
-                    color: theme.palette().primary,
-                    width: 1,
-                    radius: Radius::default(),
-                }
-            }));
+        download_pane = download_pane.push(horizontal_rule(5).style(CustomStyles::horizontal_rule));
     }
 
     let download_pane = container(download_pane)
-        .style(modify_style(0.8))
+        .style(CustomStyles::darker_background(0.8))
         .width(iced::Length::Fixed(DOWNLOAD_PANE_WIDTH))
         .height(iced::Length::FillPortion(1))
         .padding(5);
@@ -379,22 +324,11 @@ fn footer_pane(state: &State) -> iced::Element<Message> {
 
     let mut port_tooltip = match state.port_buffer.parse::<u16>() {
         Err(_) => {
-            port_text = port_text.style(|theme, status| {
-                iced::widget::text_input::Style {
-                    background: iced::Background::Color(iced::Color::from_rgb8(255, 0, 0)),
-                    ..default(theme, status)                
-                }
-            });
+            port_text = port_text.style(CustomStyles::textfield_background(iced::Color::from_rgb8(255, 0, 0)));
             format!("Invaid port number. Please enter a number between 0 and 65535. (Active Port: {})", state.port)
         },
         Ok(n) if state.port != n => {
-            port_text = port_text.style(|theme, status| {
-                    iced::widget::text_input::Style {
-                        background: iced::Background::Color(iced::Color::from_rgb8(0, 0, 255)),
-                        ..default(theme, status)                
-                    }
-                }
-            );
+            port_text = port_text.style(CustomStyles::textfield_background(iced::Color::from_rgb8(0, 0, 255)));
             format!("Press Enter to change the port. (Active Port: {})", state.port)
         }  
         _ => {
@@ -443,7 +377,7 @@ fn footer_pane(state: &State) -> iced::Element<Message> {
     .align_y(iced::alignment::Vertical::Center);
 
     let footer = container(footer)
-        .style(modify_style(0.8))
+        .style(CustomStyles::darker_background(0.8))
         .width(iced::Length::Fill)
         .align_x(iced::alignment::Horizontal::Center);
 
@@ -489,17 +423,7 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
             0.0..=client_info.current_downloads_size as f32,
             client_info.current_download_progress as f32
         ).height(8.0)
-        .style(|theme: &Theme|{
-            iced::widget::progress_bar::Style {
-                background: iced::Background::Color(color_multiply(theme.palette().background, 0.6)),
-                bar: iced::Background::Color(theme.palette().primary),
-                border: Border {
-                    color: iced::Color::TRANSPARENT,
-                    width: 0.0,
-                    radius: Radius::from(5.0)
-                },
-            }
-        });
+        .style(CustomStyles::progress_bar);
 
         let progress_bar = container(progress_bar)
             .padding(2);
@@ -521,9 +445,10 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
             Space::new(iced::Length::Fixed(12.0), iced::Length::Shrink)
         ];
 
+        let factor = if indx & 1 == 0 { 0.9 } else { 0.7 };
         let conection = container(conection)
             .padding(2)
-            .style(modify_style(if indx & 1 == 0 { 0.9 } else { 0.7 }));
+            .style(CustomStyles::darker_background(factor));
 
         let last_connection_text = match client_info.state {
             state::ClientState::Downloading => format!("Downloading at up to {}/s\nProgress: ({}/{})", size_string(client_info.max_speed), size_string(client_info.current_download_progress), size_string(client_info.current_downloads_size)),
@@ -560,40 +485,13 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
         connections = connections.push(conection);
     }
 
-    let connections: iced::Element<Message> = iced::widget::scrollable(connections)
-        .style(|theme, _status| 
-            iced::widget::scrollable::Style {
-                container: container::Style::default(),
-                vertical_rail: Rail {
-                    background: None,
-                    border: iced::Border { color: iced::Color::TRANSPARENT, width: 0.0, radius: Radius::default() },
-                    scroller: Scroller { color: theme.palette().primary, border: iced::Border { color: iced::Color::TRANSPARENT, width:  2.0, radius: Radius::from(5) } },
-                },
-                horizontal_rail: iced::widget::scrollable::Rail {
-                    background: None,
-                    border: iced::Border { color: iced::Color::TRANSPARENT, width: 0.0, radius: Radius::default() },
-                    scroller: Scroller { color: iced::Color::TRANSPARENT, border: iced::Border { color: iced::Color::TRANSPARENT, width: 0.0, radius: Radius::default() } },
-                },
-                gap: None,
-            }
-        )
+    let connections: iced::Element<Message> = iced::widget::scrollable(connections).style(CustomStyles::scrollable)
         .height(iced::Length::Fill).into();
 
     let connections = container(connections)
         .width(iced::Length::Fill)
         .padding(1)
-        .style(|theme: &Theme| {
-            let mut style = iced::widget::container::bordered_box(theme);
-            style.border.width = 1.0;
-            style.border.radius = Radius::from(0.0);
-            style.border.color = if state.active_downloads == 0 {
-                iced::Color::from_rgb8(80, 50, 120)
-            } else {
-                iced::Color::from_rgb8(159, 99, 246)
-            };
-            style.background = Some(iced::Background::Color(color_multiply(theme.palette().background,0.6)));
-            style
-        });
+        .style(CustomStyles::container_border(state.active_downloads > 0));
 
     let stats_text = text!("Stats")
         .size(H1_SIZE)
@@ -626,58 +524,22 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
 
     let connections = column![
         text_connections, 
-        horizontal_rule(5)
-            .style(|theme: &Theme| {
-                iced::widget::rule::Style {
-                    fill_mode: FillMode::Full,
-                    color: theme.palette().primary,
-                    width: 1,
-                    radius: Radius::default(),
-                }
-            }),
+        horizontal_rule(5).style(CustomStyles::horizontal_rule),
         connections, 
         stats_text,
-        horizontal_rule(5)
-            .style(|theme: &Theme| {
-                iced::widget::rule::Style {
-                    fill_mode: FillMode::Full,
-                    color: theme.palette().primary,
-                    width: 1,
-                    radius: Radius::default(),
-                }
-            }),
+        horizontal_rule(5).style(CustomStyles::horizontal_rule),
         stats_row
     ]
     .padding(5)
     .spacing(10);
 
     let connections = container(connections)
-        .style(modify_style(0.8))
+        .style(CustomStyles::darker_background(0.8))
         .width(iced::Length::Fixed(CONNECTION_PANE_WIDTH))
         .height(iced::Length::FillPortion(1))
         .padding(5);
 
     connections.into()
-}
-
-fn color_multiply(color: iced::Color, factor: f32) -> iced::Color {
-    iced::Color {
-        r: color.r * factor,
-        g: color.g * factor,
-        b: color.b * factor,
-        a: color.a,
-    }
-}
-
-fn modify_style(mult: f32) -> impl Fn(&Theme) -> container::Style {
-    move |theme: &Theme| {
-        let p: palette::Palette = theme.palette();
-        let darker_background = color_multiply(p.background, mult);
-        container::Style {
-            background: Some(iced::Background::Color(darker_background)),
-            ..container::Style::default()
-        }
-    }
 }
 
 fn format_time(time: Duration) -> String {
