@@ -1,7 +1,7 @@
 # File share
 Share files in local network or over the internet. 
 
-<img src="[https://user-images.githubusercontent.com/link-to-your-image.png](https://i.imgur.com/o7b913P.png)" width="200" />
+<a href="https://imgur.com/o7b913P"><img src="https://i.imgur.com/o7b913P.png" title="source: imgur.com" /></a>
 
 ### Run with
 ```
