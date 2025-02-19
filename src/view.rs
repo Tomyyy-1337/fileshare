@@ -1,6 +1,6 @@
 use std::{cmp::Reverse, time::Duration};
 
-use iced::{border::Radius, theme::palette, widget::{self, button, checkbox, column, container, horizontal_rule, hover, row, rule::FillMode, scrollable, text, text_input::default, tooltip, Space, Theme}};
+use iced::{border::Radius, theme::palette, widget::{self, button, checkbox, column, container, horizontal_rule, hover, row, rule::FillMode, scrollable::{Rail, Scroller}, text, text_input::default, tooltip, Space, Theme}};
 use crate::{server::size_string, state::{self, State}, update::Message};
 
 const H1_SIZE: u16 = 30;
@@ -172,8 +172,24 @@ fn upload_pane(state: &State) -> iced::Element<Message> {
             files_list = files_list.push(col);
         }
 
-        let files_list = scrollable(files_list)
-            .height(iced::Length::Fill);
+        let files_list = iced::widget::scrollable(files_list)
+            .height(iced::Length::Fill)
+            .style(|theme, _status| 
+                iced::widget::scrollable::Style {
+                    container: container::Style::default(),
+                    vertical_rail: Rail {
+                        background: None,
+                        border: iced::Border { color: iced::Color::TRANSPARENT, width: 0.0, radius: Radius::default() },
+                        scroller: Scroller { color: iced::Color::from_rgb8(159, 99, 246), border: iced::Border { color: iced::Color::TRANSPARENT, width:  2.0, radius: Radius::from(5) } },
+                    },
+                    horizontal_rail: iced::widget::scrollable::Rail {
+                        background: None,
+                        border: iced::Border { color: iced::Color::TRANSPARENT, width: 0.0, radius: Radius::default() },
+                        scroller: Scroller { color: iced::Color::TRANSPARENT, border: iced::Border { color: iced::Color::TRANSPARENT, width: 0.0, radius: Radius::default() } },
+                    },
+                    gap: None,
+                }
+            );
 
         let delete_all_button = button("Remove All")
             .width(iced::Length::FillPortion(1));
@@ -533,7 +549,23 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
         connections = connections.push(conection);
     }
 
-    let connections: iced::Element<Message> = scrollable(connections)
+    let connections: iced::Element<Message> = iced::widget::scrollable(connections)
+        .style(|theme, _status| 
+            iced::widget::scrollable::Style {
+                container: container::Style::default(),
+                vertical_rail: Rail {
+                    background: None,
+                    border: iced::Border { color: iced::Color::TRANSPARENT, width: 0.0, radius: Radius::default() },
+                    scroller: Scroller { color: iced::Color::from_rgb8(159, 99, 246), border: iced::Border { color: iced::Color::TRANSPARENT, width:  2.0, radius: Radius::from(5) } },
+                },
+                horizontal_rail: iced::widget::scrollable::Rail {
+                    background: None,
+                    border: iced::Border { color: iced::Color::TRANSPARENT, width: 0.0, radius: Radius::default() },
+                    scroller: Scroller { color: iced::Color::TRANSPARENT, border: iced::Border { color: iced::Color::TRANSPARENT, width: 0.0, radius: Radius::default() } },
+                },
+                gap: None,
+            }
+        )
         .height(iced::Length::Fill).into();
 
     let connections = container(connections)
