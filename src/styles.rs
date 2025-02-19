@@ -1,4 +1,4 @@
-use iced::{border, widget, Border, Theme};
+use iced::{border::{self, Radius}, widget, Border, Theme};
 
 pub struct CustomStyles;
 
@@ -94,6 +94,20 @@ impl CustomStyles {
             };
             style.background = Some(iced::Background::Color(color_multiply(theme.palette().background,0.6)));
             style
+        }
+    }
+
+    pub fn pick_list(theme: &Theme, _state: widget::pick_list::Status) -> widget::pick_list::Style {
+        widget::pick_list::Style {
+            text_color: theme.palette().text,
+            placeholder_color: theme.palette().text,
+            handle_color: theme.palette().primary,
+            background: theme.palette().background.into(),
+            border: border::Border { 
+                color: theme.palette().primary,
+                width: 1.2,
+                radius: Radius::from(1.0)
+            }
         }
     }
 }

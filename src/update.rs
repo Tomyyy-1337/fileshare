@@ -7,7 +7,9 @@ use crate::{server::{self, server, ServerMessage}, state::{ClientInfo, ClientSta
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    ToggleDarkMode,
+    ThemeChanged(iced::Theme),
+    NextTheme,
+    PreviousTheme,
     CopyUrl,
     None,
     OpenInBrowser,
@@ -26,16 +28,33 @@ pub enum Message {
     ServerMessage(server::ServerMessage),
     Refresh,
     ShowQrCode(bool),
-    WindowEvent(iced::window::Event),
+    WindowEvent(iced::window::Event)
 }
 
 pub fn update(state: &mut State, message: Message) -> Task<Message> {
     match message {
-        Message::ToggleDarkMode => state.dark_mode = !state.dark_mode,
+        Message::ThemeChanged(theme) => {
+            state.theme.set(&theme);
+            state.backup_state();
+        },
+        Message::NextTheme => {
+            state.theme.next();
+            state.backup_state();
+        }
+        Message::PreviousTheme => {
+            state.theme.previous();
+            state.backup_state();
+        }
 
-        Message::ToggleConnectionsView => state.show_connections = !state.show_connections,
+        Message::ToggleConnectionsView => {
+            state.show_connections = !state.show_connections;
+            state.backup_state();
+        },
 
-        Message::ShowQrCode(show) => state.show_qr_code = show,
+        Message::ShowQrCode(show) => {
+            state.show_qr_code = show;
+            state.backup_state();
+        },
 
         Message::BlockExternalConnections(block) => {
             state.block_external_connections.store(block, std::sync::atomic::Ordering::Relaxed);
@@ -127,6 +146,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
                 sleep(std::time::Duration::from_millis(100));
                 return start_server(state);
             }
+            state.backup_state();
         },
 
         Message::SelectFilesExplorer => {

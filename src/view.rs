@@ -1,7 +1,7 @@
 use std::{cmp::Reverse, time::Duration};
 
-use iced::widget::{self, button, checkbox, column, container, horizontal_rule, hover, row, text, tooltip, Space};
-use crate::{server::size_string, state::{self, State}, styles::CustomStyles, update::Message};
+use iced::widget::{self, button, checkbox, column, container, horizontal_rule, hover, pick_list, row, text, tooltip, Space};
+use crate::{server::size_string, state::{self, State}, styles::{color_multiply, CustomStyles}, update::Message};
 
 const H1_SIZE: u16 = 30;
 const H2_SIZE: u16 = 20;
@@ -308,8 +308,8 @@ fn footer_pane(state: &State) -> iced::Element<Message> {
     let settings_text = text!("Theme:")
         .size(H2_SIZE);
 
-    let theme_button = button("Toggle Dark Mode")
-        .on_press(Message::ToggleDarkMode);
+    let theme_button = pick_list(state.theme.available_themes(), Some(state.theme.get()),Message::ThemeChanged)
+        .style(CustomStyles::pick_list);
 
     let port_title = text!("Port:")
         .size(H2_SIZE);
@@ -324,11 +324,11 @@ fn footer_pane(state: &State) -> iced::Element<Message> {
 
     let mut port_tooltip = match state.port_buffer.parse::<u16>() {
         Err(_) => {
-            port_text = port_text.style(CustomStyles::textfield_background(iced::Color::from_rgb8(255, 0, 0)));
+            port_text = port_text.style(CustomStyles::textfield_background(state.theme.get().palette().danger));
             format!("Invaid port number. Please enter a number between 0 and 65535. (Active Port: {})", state.port)
         },
         Ok(n) if state.port != n => {
-            port_text = port_text.style(CustomStyles::textfield_background(iced::Color::from_rgb8(0, 0, 255)));
+            port_text = port_text.style(CustomStyles::textfield_background(color_multiply(state.theme.get().palette().primary, 0.8)));
             format!("Press Enter to change the port. (Active Port: {})", state.port)
         }  
         _ => {
@@ -398,9 +398,9 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
     for (indx, (ip, client_info)) in clients.iter().enumerate() {
 
         let color = match client_info.state {
-            state::ClientState::Downloading => iced::Color::from_rgb8(159, 99, 246),
-            state::ClientState::Connected => iced::Color::from_rgb8(0, 150, 0),
-            state::ClientState::Disconnected => iced::Color::from_rgb8(255, 0, 0),
+            state::ClientState::Downloading => state.theme.get().palette().primary,
+            state::ClientState::Connected => state.theme.get().palette().success,
+            state::ClientState::Disconnected => state.theme.get().palette().danger,
         };
 
         let text_ip = text!("{}", ip.to_string())

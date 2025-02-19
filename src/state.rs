@@ -1,7 +1,8 @@
-use std::{collections::HashMap, net::IpAddr, path::PathBuf, sync::{atomic::AtomicBool, Arc, RwLock}, vec};
+use std::{collections::HashMap, fs::{read_to_string, File}, io::Write, net::IpAddr, path::PathBuf, sync::{atomic::AtomicBool, Arc, RwLock}, vec};
 use local_ip_address::local_ip;
-use iced::widget;
+use iced::{theme::{Custom, Palette}, widget, Theme};
 use qrcode_generator::QrCodeEcc;
+use serde::{Deserialize, Serialize};
 
 use crate::view::CONNECTION_PANE_WIDTH;
 
@@ -34,7 +35,7 @@ pub struct ClientInfo {
 }
 
 pub struct State {
-    pub dark_mode: bool,
+    pub theme: ThemeSelector,
     pub ip_adress: IpAddr,
     pub ip_adress_public: Option<IpAddr>,
     pub port: u16,
@@ -62,29 +63,56 @@ impl Default for State {
         let ip_public = public_ip_address::perform_lookup(None).map(|lookup|lookup.ip).ok();
         let qr_code = Self::create_qr_code(&Self::url_string(&ip, 8080));
 
+        let config_path = "config.json";
+
+        let mut theme = ThemeSelector::new();
+        let mut port = 8080;
+        let mut show_connections = true;
+        let mut show_qr_code = true;
+        let mut port_buffer = "8080".to_string();
+
+        if let Ok(file) = read_to_string(config_path) {
+            let json = serde_json::from_str::<PersistantState>(&file);
+            if let Ok(data) = json {
+                theme.set_indx(data.theme);
+                port = data.port;
+                port_buffer = port.to_string();
+                show_connections = data.show_connections;
+                show_qr_code = data.show_qr_code;
+            }   
+        }
+    
         Self {
-            dark_mode: true,
+            theme,
             ip_adress: ip,
             ip_adress_public: ip_public,
-            port: 8080,
+            port,
             file_path: Arc::new(RwLock::new(HashMap::new())),
             file_index: 0,
             qr_code,
             server_handle: None,
-            port_buffer: "8080".to_string(),
+            port_buffer,
             local_host: true,
             size: (0.0, 0.0),
             clients: HashMap::new(),
-            show_connections: true,
+            show_connections,
             transmitted_data: 0,
             block_external_connections: Arc::new(AtomicBool::new(true)),
             active_downloads: 0,
             total_downloads: 0,
             active_connections: 0,
             throughput: 0,
-            show_qr_code: true,
+            show_qr_code,
         }
     }
+}
+
+#[derive(Serialize, Deserialize)]
+struct PersistantState {
+    theme: usize,
+    port: u16,
+    show_connections: bool,
+    show_qr_code: bool
 }
 
 impl State {
@@ -109,5 +137,90 @@ impl State {
         
         widget::image::Handle::from_rgba(size as u32, size as u32, data)
     }
+
+    pub fn backup_state(&self) {
+        let persistant_state = PersistantState {
+            theme: self.theme.indx,
+            port: self.port,
+            show_connections: self.show_connections,
+            show_qr_code: self.show_qr_code
+        };
+
+        let config_path = "config.json";
+        let json = serde_json::to_string(&persistant_state).unwrap();
+        
+        if let Ok(mut file) = File::create(config_path) {
+            let _ = file.write_all(json.as_bytes());
+        }
+    }
 }
+
+pub struct ThemeSelector {
+    indx: usize,
+    themes: [iced::Theme; 20],
+}
+
+impl ThemeSelector {
+    fn set_indx(&mut self, indx: usize) {
+        self.indx = indx;
+    }
+
+    pub fn get(&self) -> iced::Theme {
+        self.themes[self.indx].clone()
+    }
+
+    pub fn next(&mut self) {
+        self.indx = (self.indx + 1).min(self.themes.len() - 1);
+    }
+
+    pub fn previous(&mut self) {
+        if let Some(val) = self.indx.checked_sub(1) {
+            self.indx = val;
+        }
+    }
+
+    pub fn available_themes(&self) -> &[iced::Theme] {
+        &self.themes
+    }
+
+    pub fn set(&mut self, theme: &iced::Theme) {
+        self.indx = self.themes.iter().position(|t| t == theme).unwrap_or(0);
+    }
+
+    fn new() -> Self {
+        Self {
+            indx: 9,
+            themes: [
+                Theme::Custom(Arc::new(Custom::new("Dracula Light".to_string(), Palette {
+                    background: iced::Color::WHITE,
+                    text: iced::Color::BLACK,
+                    primary: iced::Color::from_rgb8(159, 99, 246),
+                    success: iced::Color::from_rgb8(0, 120, 212),
+                    danger: iced::Color::from_rgb8(255, 0, 0),
+                }))),
+                Theme::Light,
+                Theme::SolarizedLight,
+                Theme::CatppuccinLatte,
+                Theme::GruvboxLight,
+                Theme::TokyoNightLight,
+                Theme::Nord,
+                Theme::CatppuccinFrappe,
+                Theme::CatppuccinMocha,
+                Theme::Dracula,
+                Theme::Dark,
+                Theme::Ferra,
+                Theme::GruvboxDark,
+                Theme::Oxocarbon,
+                Theme::TokyoNight,
+                Theme::TokyoNightStorm,
+                Theme::SolarizedDark,
+                Theme::Nightfly,
+                Theme::Moonfly,
+                Theme::KanagawaDragon,
+            ],
+        }
+    }
+}
+
+
 

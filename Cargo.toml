@@ -1,6 +1,6 @@
 [package]
 name = "fileshare"
-version = "0.1.9"
+version = "0.1.10"
 edition = "2021"
 
 [dependencies]
@@ -19,6 +19,7 @@ tera = "1.10.0"
 serde = { version = "1.0.217", features = ["derive"] }
 public-ip-address = { version = "0.3", features = ["blocking"] }
 bytes = "1.10.0"
+serde_json = "1.0.138"
 
 [dependencies.iced]
 version = "0.13.1"

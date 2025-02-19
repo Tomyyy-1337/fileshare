@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Fileshare"
-#define MyAppVersion "1.9"
+#define MyAppVersion "1.10"
 #define MyAppPublisher "Tom Paßberg"
 #define MyAppURL "https://github.com/Tomyyy-1337/PasswordManager"
 #define MyAppExeName "fileshare.exe"

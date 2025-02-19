@@ -1,8 +1,5 @@
 #![windows_subsystem = "windows"]
-
-use std::sync::Arc;
-
-use iced::{theme::{Custom, Palette}, Size, Theme};
+use iced::Size;
 
 mod state;
 
@@ -29,15 +26,6 @@ fn main() -> iced::Result {
             icon: Some(iced::window::icon::from_file("./assets/icon.ico").unwrap()),
             ..iced::window::Settings::default()
         })
-        .theme(|state| match state.dark_mode {
-            true => Theme::Dracula,
-            false => Theme::Custom(Arc::new(Custom::new("Light".to_string(), Palette {
-                background: iced::Color::WHITE,
-                text: iced::Color::BLACK,
-                primary: iced::Color::from_rgb8(159, 99, 246),
-                success: iced::Color::from_rgb8(0, 120, 212),
-                danger: iced::Color::from_rgb8(255, 0, 0),
-            })))
-        })
+        .theme(|state| state.theme.get())
         .run()
 }

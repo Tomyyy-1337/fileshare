@@ -7,12 +7,14 @@ use crate::update::Message;
 pub fn subscription(state: &State) -> Subscription<Message> {
     let keyboard = keyboard_input(state);
     let window = window_events();
-    let update_loop = iced::time::every(std::time::Duration::from_secs(1)).map(|_| Message::Refresh);
+    let refresh_loop = iced::time::every(std::time::Duration::from_secs(1)).map(|_| Message::Refresh);
+    let update_loop = iced::time::every(std::time::Duration::from_millis(200)).map(|_| Message::None);
 
     Subscription::batch([
         keyboard, 
         window,
-        update_loop,
+        refresh_loop,
+        update_loop
     ])
 }
 
@@ -27,7 +29,10 @@ fn keyboard_input(_state: &State) -> Subscription<Message> {
         match key {
             keyboard::Key::Named(Named::Space) => Some(Message::SelectFilesExplorer),
             keyboard::Key::Named(Named::Backspace) => Some(Message::DeleteAllFiles),
+            keyboard::Key::Named(Named::ArrowUp) => Some(Message::PreviousTheme),
+            keyboard::Key::Named(Named::ArrowDown) => Some(Message::NextTheme),
             _ => None,
         }
     })
+    
 }
