@@ -91,7 +91,7 @@ fn upload_pane(state: &State) -> iced::Element<Message> {
 
         let mut files_list = column![];
 
-        for (i, state::FileInfo{path, download_count, size}) in file_path.iter().cloned().rev() {
+        for (color, (i, state::FileInfo{path, download_count, size})) in file_path.iter().cloned().rev().enumerate() {
             let text_file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
             let text_file_name = text(text_file_name)
                 .size(H2_SIZE)
@@ -162,7 +162,7 @@ fn upload_pane(state: &State) -> iced::Element<Message> {
 
             let col = container(col)
                 .padding(12)
-                .style(modify_style(if i & 1 == 0 { 0.9 } else { 0.7 }));
+                .style(modify_style(if color & 1 == 0 { 0.9 } else { 0.7 }));
 
             let col = hover(col, column![
                 Space::new(iced::Length::Fill, iced::Length::Fill),
@@ -180,7 +180,7 @@ fn upload_pane(state: &State) -> iced::Element<Message> {
                     vertical_rail: Rail {
                         background: None,
                         border: iced::Border { color: iced::Color::TRANSPARENT, width: 0.0, radius: Radius::default() },
-                        scroller: Scroller { color: iced::Color::from_rgb8(159, 99, 246), border: iced::Border { color: iced::Color::TRANSPARENT, width:  2.0, radius: Radius::from(5) } },
+                        scroller: Scroller { color: theme.palette().primary, border: iced::Border { color: iced::Color::TRANSPARENT, width:  2.0, radius: Radius::from(5) } },
                     },
                     horizontal_rail: iced::widget::scrollable::Rail {
                         background: None,
@@ -556,7 +556,7 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
                 vertical_rail: Rail {
                     background: None,
                     border: iced::Border { color: iced::Color::TRANSPARENT, width: 0.0, radius: Radius::default() },
-                    scroller: Scroller { color: iced::Color::from_rgb8(159, 99, 246), border: iced::Border { color: iced::Color::TRANSPARENT, width:  2.0, radius: Radius::from(5) } },
+                    scroller: Scroller { color: theme.palette().primary, border: iced::Border { color: iced::Color::TRANSPARENT, width:  2.0, radius: Radius::from(5) } },
                 },
                 horizontal_rail: iced::widget::scrollable::Rail {
                     background: None,
