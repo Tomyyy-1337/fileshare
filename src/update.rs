@@ -212,7 +212,11 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
                 client.received_data += num_packets * 4096;
                 client.download_size += num_packets * 4096;
                 client.current_download_progress += num_packets * 4096;
-                client.state = ClientState::Downloading;
+                client.state = if client.current_downloads_size == client.download_size {
+                    ClientState::Connected
+                } else {
+                    ClientState::Downloading
+                };
             });
 
             state.transmitted_data += num_packets * 4096;

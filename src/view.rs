@@ -171,7 +171,6 @@ fn upload_pane(state: &State) -> iced::Element<Message> {
 
             files_list = files_list.push(col);
         }
-        drop(file_path);
 
         let files_list = scrollable(files_list)
             .height(iced::Length::Fill);
@@ -449,8 +448,8 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
     for (indx, (ip, client_info)) in clients.iter().enumerate() {
 
         let color = match client_info.state {
-            state::ClientState::Downloading => iced::Color::from_rgb8(0, 0, 255),
-            state::ClientState::Connected => iced::Color::from_rgb8(0, 255, 0),
+            state::ClientState::Downloading => iced::Color::from_rgb8(159, 99, 246),
+            state::ClientState::Connected => iced::Color::from_rgb8(0, 150, 0),
             state::ClientState::Disconnected => iced::Color::from_rgb8(255, 0, 0),
         };
 
@@ -534,12 +533,24 @@ fn connection_info_pane(state: &State) -> iced::Element<Message> {
         connections = connections.push(conection);
     }
 
-    let connections = scrollable(connections)
-        .height(iced::Length::Fill);
+    let connections: iced::Element<Message> = scrollable(connections)
+        .height(iced::Length::Fill).into();
 
     let connections = container(connections)
         .width(iced::Length::Fill)
-        .style(modify_style(0.6));
+        .padding(1)
+        .style(|theme: &Theme| {
+            let mut style = iced::widget::container::bordered_box(theme);
+            style.border.width = 1.0;
+            style.border.radius = Radius::from(0.0);
+            style.border.color = if state.active_downloads == 0 {
+                iced::Color::from_rgb8(80, 50, 120)
+            } else {
+                iced::Color::from_rgb8(159, 99, 246)
+            };
+            style.background = Some(iced::Background::Color(color_multiply(theme.palette().background,0.6)));
+            style
+        });
 
     let stats_text = text!("Stats")
         .size(H1_SIZE)
