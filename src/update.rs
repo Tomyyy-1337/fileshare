@@ -30,6 +30,7 @@ pub enum Message {
 }
 
 pub fn update(state: &mut State, message: Message) -> Task<Message> {
+    println!("{:?}", message);
     match message {
         Message::ToggleDarkMode => state.dark_mode = !state.dark_mode,
 
@@ -149,13 +150,16 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         Message::ServerMessage(ServerMessage::DownloadAllRequest { ip }) => {
             let file_path = state.file_path.read().unwrap();
             let file_size = file_path.iter().map(|(_, file)| file.size).sum();
-
+            drop(file_path);
+            
             state.clients.entry(ip).and_modify(|client| {
                 client.current_downloads_size = file_size;
                 client.last_connection = std::time::Instant::now();
                 client.last_download = std::time::Instant::now();
                 client.state = ClientState::Downloading;
             });
+            
+            state.active_downloads += 1;
         },
 
         Message::ServerMessage(ServerMessage::Downloaded { index, ip }) => {
@@ -199,6 +203,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
                 client.current_downloads_size += state.file_path.read().unwrap().get(&index).map(|file| file.size).unwrap_or(0);
                 client.state = ClientState::Downloading;
             });
+            state.active_downloads += 1;
         },
 
         Message::ServerMessage(ServerMessage::DownloadActive { ip, num_packets }) => {
@@ -208,6 +213,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
                 client.received_data += num_packets;
                 client.download_size += num_packets * 4096;
                 client.current_download_progress += num_packets * 4096;
+                client.state = ClientState::Downloading;
             });
 
             state.transmitted_data += num_packets * 4096;
