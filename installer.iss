@@ -21,8 +21,6 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\{#MyAppName}
 UninstallDisplayIcon={app}\{#MyAppExeName}
 DisableProgramGroupPage=yes
-; Uncomment the following line to run in non administrative install mode (install for current user only).
-;PrivilegesRequired=lowest
 OutputDir=.\target\inno
 OutputBaseFilename=fileshare_installer
 SolidCompression=yes
@@ -39,6 +37,7 @@ Source: ".\target\optimized\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignorever
 Source: ".\static\*"; DestDir: "{app}\static"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: ".\template\*"; DestDir: "{app}\template"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: ".\assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: ".\config\*"; DestDir: "{commonappdata}\{#MyAppName}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]

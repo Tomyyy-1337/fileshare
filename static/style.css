@@ -1,7 +1,7 @@
 body {
     font-family: Arial, sans-serif;
-    background-color: #282a36; 
-    color: #e0e0e0; 
+    background-color: var(--background-color);
+    color: var(--text-color);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -22,7 +22,7 @@ h2 {
 
 .name {
     font-size: 18px;
-    color: #e0e0e0;
+    color: var(--text-color);
     padding: 0;
 }
 
@@ -35,8 +35,8 @@ h2 {
 
 .link {
     text-decoration: none;
-    background-color: #a063f6;
-    color: #fff;
+    background-color: var(--primary-color);
+    color: var(--text-color-2);
     padding: 10px 20px;
     border-radius: 10px;
     transition: background-color 0.4s ease;
@@ -47,11 +47,11 @@ h2 {
 }
 
 .link:hover, #downloadAll:hover {
-    background-color: #bd93f9;
+    background-color: var(--secondary-color);
 }
 
 #downloadAll {
-    background-color: #8d44f2;
+    background-color: var(--primary-color);
     border-radius: 15px;
     font-weight: bold;
     font-size: 18px;
@@ -63,7 +63,7 @@ h2 {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background-color: #20222b; 
+    background-color: var(--background-color-2);
     padding: 10px 20px;
     border-radius: 15px;
 }

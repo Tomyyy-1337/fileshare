@@ -10,5 +10,5 @@ cargo run --release
 
 ### Optimized Build
 ```
-cargo build --profile optimized
+cargo run --profile optimized --features appdata
 ```

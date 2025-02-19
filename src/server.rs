@@ -1,4 +1,5 @@
-use std::{collections::HashMap, net::IpAddr, sync::{atomic::{AtomicBool, Ordering}, Arc, RwLock}};
+use std::{collections::HashMap, net::IpAddr, sync::{atomic::{AtomicBool, Ordering}, Arc, RwLock}, thread::current};
+use iced::{theme, Theme};
 use serde::Serialize;
 use warp::{http::header, reject::Rejection, reply::Response, Filter};
 use tokio::{fs::File, sync::Mutex};
@@ -24,12 +25,13 @@ pub async fn server(
     port: u16, 
     path: Arc<RwLock<HashMap<usize, state::FileInfo>>>, 
     tx: Sender<ServerMessage>,
-    block_external_connections: Arc<AtomicBool>)
-{
+    block_external_connections: Arc<AtomicBool>,
+    theme: Arc<RwLock<Theme>>
+) {
     let semaphors: Arc<Mutex<HashMap<IpAddr, Arc<tokio::sync::Semaphore>>>> = Arc::new(Mutex::new(HashMap::<IpAddr, Arc<tokio::sync::Semaphore>>::new()));
 
     let html_route = create_index_route(path.clone());
-    let update_route = create_refresh_route(path.clone());
+    let update_route = create_refresh_route(path.clone(), theme.clone());
     let static_route = create_static_route();
     let download_route = create_download_route(path, tx.clone(), semaphors.clone());
     let download_all_route = create_download_all_route(tx.clone());
@@ -91,15 +93,38 @@ fn create_index_route(path: Arc<RwLock<HashMap<usize, state::FileInfo>>>, ) -> i
 #[derive(Serialize)]
 struct UpdateData {
     size: String,
-    html: String
+    html: String,
+    primary: SendColor,
+    background: SendColor,
+    text: SendColor,
 }
 
-fn create_refresh_route(path: Arc<RwLock<HashMap<usize, state::FileInfo>>>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+#[derive(Serialize)]
+struct SendColor {
+    r: u8,
+    g: u8,
+    b: u8,
+}
+
+fn color_to_arr (color: iced::Color) -> SendColor {
+    let [r,g,b,_] = color.into_rgba8();
+    SendColor { r, g, b }
+}
+
+fn create_refresh_route(
+    path: Arc<RwLock<HashMap<usize, state::FileInfo>>>,
+    theme: Arc<RwLock<Theme>>
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone 
+{
     let refresh_route = warp::path("update-content")
         .map(move || {
             let html = fill_template(path.clone(), "file_list.html");
+            let theme = theme.read().unwrap();
             let response = warp::reply::json(&UpdateData {
                 size: size_string(path.read().unwrap().iter().map(|(_, state::FileInfo{size, ..})| size).sum()),
+                primary: color_to_arr(theme.palette().primary),
+                background: color_to_arr(theme.palette().background),
+                text: color_to_arr(theme.palette().text),
                 html
             });
             response

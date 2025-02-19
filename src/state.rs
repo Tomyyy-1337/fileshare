@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::{read_to_string, File}, io::Write, net::IpAddr, path::PathBuf, sync::{atomic::AtomicBool, Arc, RwLock}, vec};
+use std::{collections::HashMap, fs::{read_to_string, File}, io::Write, net::IpAddr, path::PathBuf, sync::{atomic::AtomicBool, Arc, Mutex, RwLock}, vec};
 use local_ip_address::local_ip;
 use iced::{theme::{Custom, Palette}, widget, Theme};
 use qrcode_generator::QrCodeEcc;
@@ -36,6 +36,7 @@ pub struct ClientInfo {
 
 pub struct State {
     pub theme: ThemeSelector,
+    pub current_theme: Arc<RwLock<Theme>>,
     pub ip_adress: IpAddr,
     pub ip_adress_public: Option<IpAddr>,
     pub port: u16,
@@ -63,7 +64,7 @@ impl Default for State {
         let ip_public = public_ip_address::perform_lookup(None).map(|lookup|lookup.ip).ok();
         let qr_code = Self::create_qr_code(&Self::url_string(&ip, 8080));
 
-        let config_path = "config.json";
+        let config_path = format!("{}/config.json", config_path());
 
         let mut theme = ThemeSelector::new();
         let mut port = 8080;
@@ -83,6 +84,7 @@ impl Default for State {
         }
     
         Self {
+            current_theme: Arc::new(RwLock::new(theme.get())),
             theme,
             ip_adress: ip,
             ip_adress_public: ip_public,
@@ -145,13 +147,26 @@ impl State {
             show_connections: self.show_connections,
             show_qr_code: self.show_qr_code
         };
-
-        let config_path = "config.json";
+        let config_path = config_path();
         let json = serde_json::to_string(&persistant_state).unwrap();
         
-        if let Ok(mut file) = File::create(config_path) {
+        let _ = std::fs::create_dir_all(&config_path);
+
+        if let Ok(mut file) = File::create(format!("{}/config.json",config_path)) {
             let _ = file.write_all(json.as_bytes());
         }
+    }
+}
+
+fn config_path() -> String {
+    #[cfg(feature = "appdata")]
+    {
+        let appdata_path = std::env::var("APPDATA").unwrap_or_else(|_| String::from("./appdata/config"));
+        return format!("{}/Fileshare", appdata_path);
+    }
+    #[cfg(not(feature = "appdata"))]
+    {
+        return String::from("./config");
     }
 }
 
@@ -195,7 +210,7 @@ impl ThemeSelector {
                     background: iced::Color::WHITE,
                     text: iced::Color::BLACK,
                     primary: iced::Color::from_rgb8(159, 99, 246),
-                    success: iced::Color::from_rgb8(0, 120, 212),
+                    success: iced::Color::from_rgb8(20, 180, 20),
                     danger: iced::Color::from_rgb8(255, 0, 0),
                 }))),
                 Theme::Light,

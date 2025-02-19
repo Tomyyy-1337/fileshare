@@ -35,15 +35,18 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
     match message {
         Message::ThemeChanged(theme) => {
             state.theme.set(&theme);
+            *state.current_theme.write().unwrap() = state.theme.get();
             state.backup_state();
         },
         Message::NextTheme => {
             state.theme.next();
             state.backup_state();
+            *state.current_theme.write().unwrap() = state.theme.get();
         }
         Message::PreviousTheme => {
             state.theme.previous();
             state.backup_state();
+            *state.current_theme.write().unwrap() = state.theme.get();
         }
 
         Message::ToggleConnectionsView => {
@@ -338,10 +341,11 @@ fn start_server(state: &mut State) -> Task<Message> {
     let block_external_connections = state.block_external_connections.clone();
     let ip_adress = state.ip_adress;
     let port = state.port;
+    let current_theme = state.current_theme.clone();
     let stream = channel(10, move |tx: futures::channel::mpsc::Sender<_>| {
         let tx = tx.clone();
         async move {
-            server(ip_adress, port, filepaths, tx, block_external_connections).await;
+            server(ip_adress, port, filepaths, tx, block_external_connections, current_theme.clone()).await;
         }
     });
 
