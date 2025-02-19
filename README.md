@@ -1,8 +1,7 @@
 # File share
 Share files in local network or over the internet. 
-Idle                                      | Downloading
-------------------------------------------|------------------------------------------
-![Imgur](https://i.imgur.com/y5KGBIc.png)  | ![Imgur](https://i.imgur.com/o7b913P.png)
+
+https://github.com/user-attachments/assets/a2e3f2e5-78fd-4646-8840-8ed69132bc3e
 
 ### Run with
 ```
