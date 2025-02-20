@@ -11,34 +11,7 @@ const DOWNLOAD_PANE_WIDTH: f32 = 250.0;
 
 pub fn view(state: &State) -> iced::Element<Message> {
     if state.ip_adress.is_none() {
-        let collumn = column![
-            text!("No IP address found")
-                .size(H1_SIZE)
-                .width(iced::Length::Fill)
-                .align_x(iced::alignment::Horizontal::Center),
-            text!("No IP address found. Please make sure you are connected to a network.")
-                .size(P_SIZE)
-                .width(iced::Length::Fill),
-            button("Retry")
-                .on_press(Message::RetryIp)
-                .width(iced::Length::FillPortion(1))
-
-        ]
-        .spacing(20);
-
-        let pane = container(collumn)
-            .width(iced::Length::Fixed(400.0))
-            .padding(10)
-            .style(CustomStyles::darker_background(0.8));
-
-        let pane = container(pane)
-            .width(iced::Length::Fill)
-            .height(iced::Length::Fill)
-            .align_x(iced::alignment::Horizontal::Center)
-            .align_y(iced::alignment::Vertical::Center)
-            .padding(10);
-
-        return pane.into();
+        no_connection_pane(state);
     }
 
     let max_width = 1100.0 + if state.show_connections { CONNECTION_PANE_WIDTH } else { 0.0 };
@@ -71,6 +44,37 @@ pub fn view(state: &State) -> iced::Element<Message> {
     );
 
     main.into()
+}
+
+pub fn no_connection_pane(_state: &State)  -> iced::Element<Message> {
+    let collumn = column![
+            text!("No IP address found")
+                .size(H1_SIZE)
+                .width(iced::Length::Fill)
+                .align_x(iced::alignment::Horizontal::Center),
+            text!("No IP address found. Please make sure you are connected to a network.")
+                .size(P_SIZE)
+                .width(iced::Length::Fill),
+            button("Retry")
+                .on_press(Message::RetryIp)
+                .width(iced::Length::FillPortion(1))
+
+        ]
+        .spacing(20);
+
+        let pane = container(collumn)
+            .width(iced::Length::Fixed(400.0))
+            .padding(10)
+            .style(CustomStyles::darker_background(0.8));
+
+        let pane = container(pane)
+            .width(iced::Length::Fill)
+            .height(iced::Length::Fill)
+            .align_x(iced::alignment::Horizontal::Center)
+            .align_y(iced::alignment::Vertical::Center)
+            .padding(10);
+
+        pane.into()
 }
 
 
