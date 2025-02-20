@@ -29,7 +29,6 @@ features = [
     "image", 
     "advanced", 
     "wgpu",
-    # "debug"
 ]
 
 [profile.optimized]

@@ -24,22 +24,41 @@ function downloadButtonString() {
 }
 
 document.getElementById('downloadAll').addEventListener('click', async () => {
-    const links = document.querySelectorAll('a.link');
+    const links = Array.from(document.querySelectorAll('a.link'));
     const button = document.getElementById('downloadAll');
     const originalText = button.textContent;
-
+    
     numDownloadsCompleted = 0;
     numDownloads = links.length;
     button.disabled = true;
     downloadsActive = true;
     button.textContent = downloadButtonString();
     
-    await Promise.all(Array.from(links).map(link => downloadFile(link)));
-
+    const queue = [...links];
+    const activeDownloads = new Set();
+    
+    async function processQueue() {
+        while (queue.length > 0) {
+            if (activeDownloads.size < 5) {
+                const link = queue.shift();
+                const downloadPromise = downloadFile(link).then(() => {
+                    activeDownloads.delete(downloadPromise);
+                    processQueue(); 
+                });
+                activeDownloads.add(downloadPromise);
+            }
+            await Promise.race(activeDownloads);
+        }
+    }
+    
+    await processQueue();
+    await Promise.all(activeDownloads);
+    
     button.textContent = originalText;
     downloadsActive = false;
     button.disabled = false;
 });
+
 
 async function downloadFile(link) {
     await fetch('/download-all');

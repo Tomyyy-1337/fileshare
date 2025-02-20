@@ -251,7 +251,7 @@ fn create_download_route(
                     .map_err(|_| warp::reject::not_found())?;
                 let semaphor = semaphor.lock().await
                     .entry(addr.unwrap().ip())
-                    .or_insert_with(|| Arc::new(tokio::sync::Semaphore::new(3)))
+                    .or_insert_with(|| Arc::new(tokio::sync::Semaphore::new(5)))
                     .clone();
                 let permit = semaphor.acquire_owned().await.unwrap();
                 let stream = CountingStream::new(ReaderStream::new(file), tx, index, addr.unwrap().ip(), permit);
