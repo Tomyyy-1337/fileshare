@@ -53,10 +53,11 @@ jobs:
       run: choco install innosetup
 
     - name: Run Inno Setup script
-      run: "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe installer.iss"
+      run: |
+        & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' installer.iss
 
     - name: Upload installer
       uses: actions/upload-artifact@v4
       with:
         name: installer
-        path: path\\to\\your\\output\\installer.exe
+        path: path\to\your\output\installer.exe
