@@ -151,6 +151,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
                 return Task::none();
             }
             state.port = port;
+            state.backup_state();
             state.qr_code = State::create_qr_code(&state.create_url_string());
             if let Some(handle) = &state.server_handle {
                 handle.abort();
@@ -158,7 +159,6 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
                 sleep(std::time::Duration::from_millis(100));
                 return start_server(state);
             }
-            state.backup_state();
         },
 
         Message::SelectFilesExplorer => {

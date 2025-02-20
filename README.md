@@ -12,3 +12,4 @@ cargo run --release
 ```
 cargo run --profile optimized --features appdata
 ```
+The feature *appdata* configures the programm to write config files in the appdata folder. 
