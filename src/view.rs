@@ -346,6 +346,15 @@ fn footer_pane(state: &State) -> iced::Element<Message> {
     let theme_button = pick_list(state.theme.available_themes(), Some(state.theme.get()),Message::ThemeChanged)
         .style(CustomStyles::pick_list);
 
+    let theme_button = tooltip(
+        theme_button,
+        container(text("You can change the theme of the application using the up and down arrow keys.").size(P_SIZE))
+            .padding(10)
+            .width(iced::Length::Fixed(180.0))
+            .style(container::rounded_box),
+        tooltip::Position::Right
+    );
+    
     let port_title = text!("Port:")
         .size(H2_SIZE);
 
@@ -388,7 +397,7 @@ fn footer_pane(state: &State) -> iced::Element<Message> {
         tooltip::Position::Right
     );
 
-    let text_view = text!("Connections:")
+    let text_view = text!("Settings:")
         .size(H2_SIZE);
 
     let connection_info = match state.show_connections {
@@ -400,12 +409,12 @@ fn footer_pane(state: &State) -> iced::Element<Message> {
         .width(iced::Length::Fixed(160.0));
 
     let footer = row![
+        text_view,
+        button_connection_info,
         settings_text,
         theme_button,
         port_title,
         port_text,
-        text_view,
-        button_connection_info
     ]
     .spacing(20)
     .padding(10)

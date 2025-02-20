@@ -204,7 +204,7 @@ impl ThemeSelector {
 
     fn new() -> Self {
         Self {
-            indx: 9,
+            indx: 17,
             themes: [
                 Theme::Custom(Arc::new(Custom::new("Dracula Light".to_string(), Palette {
                     background: iced::Color::WHITE,

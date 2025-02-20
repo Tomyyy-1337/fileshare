@@ -255,6 +255,21 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         },
 
         Message::Refresh => {
+            match local_ip() {
+                Ok(ip) if Some(ip) == state.ip_adress => {},
+                Ok(ip) => {
+                    stop_server(state);
+                    state.ip_adress = Some(ip);
+                    state.qr_code = State::create_qr_code(&state.create_url_string());
+                    sleep(std::time::Duration::from_millis(200));
+                    return start_server(state);
+                },
+                Err(_) => {
+                    state.ip_adress = None;
+                    stop_server(state);
+                }
+            }
+
             let mut active = 0;
             let mut downloading = 0;
 
@@ -346,9 +361,10 @@ fn start_server(state: &mut State) -> Task<Message> {
     if state.file_path.read().unwrap().is_empty() {
         return Task::none();
     }
-    if state.ip_adress.is_none() {
+    if state.ip_adress.is_none() || state.ip_adress != local_ip().ok() {
         return Task::none();
     }
+
     let filepaths = state.file_path.clone();
     let block_external_connections = state.block_external_connections.clone();
     let ip_adress = state.ip_adress;
