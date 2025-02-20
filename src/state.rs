@@ -62,16 +62,14 @@ impl Default for State {
     fn default() -> Self {
         let ip = local_ip().ok();
         let ip_public = public_ip_address::perform_lookup(None).map(|lookup|lookup.ip).ok();
-        let qr_code = Self::create_qr_code(&Self::url_string(&ip.unwrap_or(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))), 8080));
-
         let config_path = format!("{}/config.json", config_path());
-
+        
         let mut theme = ThemeSelector::new();
         let mut port = 8080;
         let mut show_connections = true;
         let mut show_qr_code = true;
         let mut port_buffer = "8080".to_string();
-
+        
         if let Ok(file) = read_to_string(config_path) {
             let json = serde_json::from_str::<PersistantState>(&file);
             if let Ok(data) = json {
@@ -82,7 +80,9 @@ impl Default for State {
                 show_qr_code = data.show_qr_code;
             }   
         }
-    
+        
+        let qr_code = Self::create_qr_code(&Self::url_string(&ip.unwrap_or(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))), port));
+        
         Self {
             current_theme: Arc::new(RwLock::new(theme.get())),
             theme,
