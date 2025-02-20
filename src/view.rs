@@ -1,6 +1,6 @@
 use std::{cmp::Reverse, time::Duration};
 
-use iced::{widget::{self, button, checkbox, column, container, horizontal_rule, hover, pick_list, row, text, tooltip, Space}, Length, Theme};
+use iced::{widget::{self, button, checkbox, column, container, horizontal_rule, hover, pick_list, row, text, tooltip, Space}, Length};
 use local_ip_address::local_ip;
 use crate::{server::size_string, state::{self, State}, styles::{color_multiply, CustomStyles}, update::Message};
 
