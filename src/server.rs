@@ -1,5 +1,5 @@
 use std::{collections::HashMap, net::IpAddr, sync::{atomic::{AtomicBool, Ordering}, Arc, RwLock}};
-use iced::{advanced::graphics::text, theme, Color, Theme};
+use iced::Theme;
 use serde::Serialize;
 use warp::{http::header, reject::Rejection, reply::Response, Filter};
 use tokio::{fs::File, sync::Mutex};
@@ -187,11 +187,11 @@ fn fill_template(
     let theme = theme.read().unwrap();
     let (primary, secondary, background, dark_background, text, text_secondary) = colors(&theme);
     context.insert("primary", &to_rgb_string(primary));
-    context.insert("secondary", &secondary);
-    context.insert("background", &background);
-    context.insert("dark_background", &dark_background);
-    context.insert("text", &text);
-    context.insert("text_secondary", &text_secondary);
+    context.insert("secondary", &to_rgb_string(secondary));
+    context.insert("background", &to_rgb_string(background));
+    context.insert("dark_background", &to_rgb_string(dark_background));
+    context.insert("text", &to_rgb_string(text));
+    context.insert("text_secondary", &to_rgb_string(text_secondary));
 
     tera.render(template, &context).unwrap()
 }

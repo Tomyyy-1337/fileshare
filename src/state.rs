@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::{read_to_string, File}, io::Write, net::IpAddr, path::PathBuf, sync::{atomic::AtomicBool, Arc, RwLock}, vec};
+use std::{collections::HashMap, fs::{read_to_string, File}, io::Write, net::{IpAddr, Ipv4Addr}, path::PathBuf, sync::{atomic::AtomicBool, Arc, RwLock}, vec};
 use local_ip_address::local_ip;
 use iced::{theme::{Custom, Palette}, widget, Theme};
 use qrcode_generator::QrCodeEcc;
@@ -37,7 +37,7 @@ pub struct ClientInfo {
 pub struct State {
     pub theme: ThemeSelector,
     pub current_theme: Arc<RwLock<Theme>>,
-    pub ip_adress: IpAddr,
+    pub ip_adress:Option<IpAddr>,
     pub ip_adress_public: Option<IpAddr>,
     pub port: u16,
     pub file_path: Arc<RwLock<HashMap<usize, FileInfo>>>,
@@ -60,9 +60,9 @@ pub struct State {
 
 impl Default for State {
     fn default() -> Self {
-        let ip = local_ip().unwrap();
+        let ip = local_ip().ok();
         let ip_public = public_ip_address::perform_lookup(None).map(|lookup|lookup.ip).ok();
-        let qr_code = Self::create_qr_code(&Self::url_string(&ip, 8080));
+        let qr_code = Self::create_qr_code(&Self::url_string(&ip.unwrap_or(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))), 8080));
 
         let config_path = format!("{}/config.json", config_path());
 
@@ -120,7 +120,7 @@ struct PersistantState {
 impl State {
     pub fn create_url_string(&self) -> String {
         if self.local_host {
-            return Self::url_string(&self.ip_adress, self.port)
+            return Self::url_string(&self.ip_adress.unwrap_or(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))), self.port);
         }
         Self::url_string(&self.ip_adress_public.unwrap(), self.port)
     }

@@ -1,5 +1,6 @@
 use std::{path::PathBuf, process::Command, thread::sleep};
 use copypasta::{ClipboardContext, ClipboardProvider};
+use local_ip_address::local_ip;
 use rfd::FileDialog;
 use iced::{stream::channel, window::Event, Size, Task};
 
@@ -28,11 +29,19 @@ pub enum Message {
     ServerMessage(server::ServerMessage),
     Refresh,
     ShowQrCode(bool),
-    WindowEvent(iced::window::Event)
+    WindowEvent(iced::window::Event),
+    RetryIp
 }
 
 pub fn update(state: &mut State, message: Message) -> Task<Message> {
     match message {
+        Message::RetryIp => {
+            state.ip_adress = local_ip().ok();
+            if state.ip_adress.is_some() {
+                state.qr_code = State::create_qr_code(&state.create_url_string());
+            }
+        },
+
         Message::ThemeChanged(theme) => {
             state.theme.set(&theme);
             *state.current_theme.write().unwrap() = state.theme.get();
@@ -337,6 +346,9 @@ fn start_server(state: &mut State) -> Task<Message> {
     if state.file_path.read().unwrap().is_empty() {
         return Task::none();
     }
+    if state.ip_adress.is_none() {
+        return Task::none();
+    }
     let filepaths = state.file_path.clone();
     let block_external_connections = state.block_external_connections.clone();
     let ip_adress = state.ip_adress;
@@ -345,7 +357,7 @@ fn start_server(state: &mut State) -> Task<Message> {
     let stream = channel(10, move |tx: futures::channel::mpsc::Sender<_>| {
         let tx = tx.clone();
         async move {
-            server(ip_adress, port, filepaths, tx, block_external_connections, current_theme.clone()).await;
+            server(ip_adress.unwrap(), port, filepaths, tx, block_external_connections, current_theme.clone()).await;
         }
     });
 
