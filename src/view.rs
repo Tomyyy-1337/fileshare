@@ -1,6 +1,7 @@
 use std::{cmp::Reverse, time::Duration};
 
-use iced::widget::{self, button, checkbox, column, container, horizontal_rule, hover, pick_list, row, text, tooltip, Space};
+use iced::{widget::{self, button, checkbox, column, container, horizontal_rule, hover, pick_list, row, text, tooltip, Space}, Length, Theme};
+use local_ip_address::local_ip;
 use crate::{server::size_string, state::{self, State}, styles::{color_multiply, CustomStyles}, update::Message};
 
 const H1_SIZE: u16 = 30;
@@ -10,10 +11,6 @@ pub const CONNECTION_PANE_WIDTH: f32 = 250.0;
 const DOWNLOAD_PANE_WIDTH: f32 = 250.0;
 
 pub fn view(state: &State) -> iced::Element<Message> {
-    if state.ip_adress.is_none() {
-        no_connection_pane(state);
-    }
-
     let max_width = 1100.0 + if state.show_connections { CONNECTION_PANE_WIDTH } else { 0.0 };
 
     let mut main = row![]
@@ -27,11 +24,13 @@ pub fn view(state: &State) -> iced::Element<Message> {
     }  
 
     main = main.push(upload_pane(state));
-    
-    if state.server_handle.is_some() {
+
+    if !local_ip().is_ok_and(|ip| state.ip_adress.is_some_and(|ip_2| ip == ip_2))  {
+        main = main.push(no_connection_pane(state, iced::Length::Fill));
+    } else if !state.file_path.read().unwrap().is_empty() {
         main = main.push(download_pane(state));
-    }
-    
+    } 
+    // 
     let main = container(main)
         .width(iced::Length::Fill)
         .height(iced::Length::Fill)
@@ -46,35 +45,37 @@ pub fn view(state: &State) -> iced::Element<Message> {
     main.into()
 }
 
-pub fn no_connection_pane(_state: &State)  -> iced::Element<Message> {
+pub fn no_connection_pane(_state: &State, height: Length)  -> iced::Element<Message> {
     let collumn = column![
-            text!("No IP address found")
-                .size(H1_SIZE)
-                .width(iced::Length::Fill)
-                .align_x(iced::alignment::Horizontal::Center),
-            text!("No IP address found. Please make sure you are connected to a network.")
-                .size(P_SIZE)
-                .width(iced::Length::Fill),
-            button("Retry")
-                .on_press(Message::RetryIp)
-                .width(iced::Length::FillPortion(1))
-
-        ]
-        .spacing(20);
-
-        let pane = container(collumn)
-            .width(iced::Length::Fixed(400.0))
-            .padding(10)
-            .style(CustomStyles::darker_background(0.8));
-
-        let pane = container(pane)
+        text!("Network Error")
+            .size(H1_SIZE)
             .width(iced::Length::Fill)
-            .height(iced::Length::Fill)
-            .align_x(iced::alignment::Horizontal::Center)
-            .align_y(iced::alignment::Vertical::Center)
-            .padding(10);
+            .align_x(iced::alignment::Horizontal::Center),
+        horizontal_rule(5).style(CustomStyles::horizontal_rule),
+        text!("Check your network connection. The fileserver is unable to start.")
+            .size(H2_SIZE)
+            .width(iced::Length::Fill),
+        button("Retry")
+            .on_press(Message::RetryIp)
+            .width(iced::Length::FillPortion(1))
 
-        pane.into()
+    ]
+    .spacing(10)
+    .padding(5);
+
+    let pane = container(collumn)
+        .width(iced::Length::Fill)
+        .height(height)
+        .padding(5)
+        .style(CustomStyles::darker_background(0.8)).padding(5);
+
+    let pane = container(pane)
+        .width(iced::Length::Fixed(DOWNLOAD_PANE_WIDTH))
+        .height(iced::Length::Fill)
+        .align_x(iced::alignment::Horizontal::Center)
+        .align_y(iced::alignment::Vertical::Center);
+
+    pane.into()
 }
 
 
@@ -394,7 +395,7 @@ fn footer_pane(state: &State) -> iced::Element<Message> {
             .padding(10)
             .width(iced::Length::Fixed(300.0))
             .style(container::rounded_box),
-        tooltip::Position::Right
+        tooltip::Position::Top
     );
 
     let text_view = text!("Settings:")
