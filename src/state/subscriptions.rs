@@ -2,7 +2,7 @@ use iced::keyboard::key::Named;
 use iced::{keyboard, window, Subscription};
 use crate::state::state::State;
 
-use crate::update::Message;
+use crate::state::update::Message;
 
 pub fn subscription(state: &State) -> Subscription<Message> {
     let keyboard = keyboard_input(state);

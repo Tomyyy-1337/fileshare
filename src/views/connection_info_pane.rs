@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use iced::widget::{column, container, horizontal_rule, row, text, tooltip, Space};
-use crate::{state::client_manager::ClientState, server::size_string, state::state::State, views::styles::CustomStyles, update::Message};
+use crate::{server::webpage_service::size_string, state::{client_manager::ClientState, state::State}, state::update::Message, views::styles::CustomStyles};
 
 use super::root_view::{CONNECTION_PANE_WIDTH, H1_SIZE, P_SIZE};
 

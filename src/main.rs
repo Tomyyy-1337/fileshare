@@ -1,10 +1,11 @@
 #![windows_subsystem = "windows"]
 
-mod update;
 mod state {
     pub mod state;
+    pub mod update;
     pub mod client_manager;
     pub mod file_manager;
+    pub mod subscriptions;
     mod theme_selector;
 }
 mod views {
@@ -16,14 +17,16 @@ mod views {
     mod footer_pane;
     mod connection_info_pane;
 }
-mod server;
-mod subscriptions;
+mod server {
+    pub mod router;
+    pub mod webpage_service;
+    mod download_service;
+    mod counting_stream;
+}
 
-use update::update;
+use state::{subscriptions::subscription, update::update};
 use views::root_view::view;
 use iced::Size;
-
-use subscriptions::subscription;
 
 fn main() -> iced::Result { 
     iced::application("Fileshare", update, view)

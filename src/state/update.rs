@@ -1,13 +1,23 @@
-use std::{path::PathBuf, process::Command, thread::sleep};
+use std::{net::IpAddr, path::PathBuf, process::Command, thread::sleep};
 use copypasta::{ClipboardContext, ClipboardProvider};
 use local_ip_address::local_ip;
 use rfd::FileDialog;
 use iced::{stream::channel, window::Event, Size, Task};
 
-use crate::{state::file_manager::FileInfo, server::{self, server, ServerMessage}, state::state::State};
+use crate::{server::router::server, state::{file_manager::FileInfo, state::State}};
+
+#[derive(Debug, Clone)]
+pub enum ServerMessage {
+    Downloaded { index: usize , ip: IpAddr },
+    ClientConnected { ip: IpAddr },
+    DownloadActive { ip: IpAddr, num_packets: usize },
+    DownloadRequest { index: usize, ip: IpAddr },
+    DownloadAllRequest { ip: IpAddr },
+}
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    ServerMessage(ServerMessage),
     ThemeChanged(iced::Theme),
     NextTheme,
     PreviousTheme,
@@ -26,7 +36,6 @@ pub enum Message {
     PortTextUpdate(String),
     ToggleConnectionsView,
     BlockExternalConnections(bool),
-    ServerMessage(server::ServerMessage),
     Refresh,
     ShowQrCode(bool),
     WindowEvent(iced::window::Event),

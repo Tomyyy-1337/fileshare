@@ -1,5 +1,5 @@
 use iced::widget::{self, button, column, container, horizontal_rule, hover, row, text, tooltip, Space};
-use crate::{state::file_manager::FileInfo, server::size_string, state::state::State, views::styles::CustomStyles, update::Message};
+use crate::{server::webpage_service::size_string, state::{file_manager::FileInfo, state::State}, state::update::Message, views::styles::CustomStyles};
 
 use super::root_view::{H1_SIZE, H2_SIZE, P_SIZE};
 

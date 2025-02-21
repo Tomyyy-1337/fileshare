@@ -1,5 +1,5 @@
 use iced::widget::{self, button, checkbox, column, container, horizontal_rule, row, text, tooltip};
-use crate::{state::state::State, views::styles::CustomStyles, update::Message};
+use crate::{state::state::State, views::styles::CustomStyles, state::update::Message};
 
 use super::root_view::{DOWNLOAD_PANE_WIDTH, H1_SIZE, H2_SIZE, P_SIZE};
 

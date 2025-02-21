@@ -1,6 +1,6 @@
 use iced::widget::{column, container, row};
 use local_ip_address::local_ip;
-use crate::{state::state::State, update::Message};
+use crate::{state::state::State, state::update::Message};
 
 use super::{connection_info_pane::connection_info_pane, download_pane::download_pane, footer_pane::footer_pane, no_connection_pane::no_connection_pane, upload_pane::upload_pane};
 

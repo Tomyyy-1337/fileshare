@@ -1,5 +1,5 @@
 use iced::widget::{self, button, container, pick_list, row, text, tooltip};
-use crate::{state::state::State, update::Message, views::{styles::CustomStyles, styles::color_multiply}};
+use crate::{state::state::State, state::update::Message, views::{styles::CustomStyles, styles::color_multiply}};
 
 use super::root_view::{H2_SIZE, P_SIZE};
 
