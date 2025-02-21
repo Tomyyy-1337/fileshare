@@ -13,6 +13,8 @@ pub struct ClientInfo {
     pub download_size: usize,
     pub last_connection: std::time::Instant,
     pub last_download: std::time::Instant,
+    pub canceled_download_size: usize,
+    pub canceled_download_progress: usize,
     pub received_data: usize,
     pub speed: usize,
     pub max_speed: usize,
@@ -93,6 +95,8 @@ impl ClientManager {
                 download_count: 0, 
                 last_connection: std::time::Instant::now(), 
                 download_size: 0, 
+                canceled_download_size: 0,
+                canceled_download_progress: 0,
                 last_download: std::time::Instant::now() - std::time::Duration::from_secs(10), 
                 received_data: 0, 
                 speed: 0, 
@@ -105,6 +109,12 @@ impl ClientManager {
 
     pub fn download_progress(&mut self, ip: IpAddr, progress: usize) {
         self.clients.entry(ip).and_modify(|client| {
+            if client.state != ClientState::Downloading {
+                client.current_downloads_size = client.canceled_download_size;
+                client.canceled_download_size = 0;
+                client.current_download_progress = client.canceled_download_progress;
+                client.canceled_download_progress = 0;
+            }
             client.last_connection = std::time::Instant::now();
             client.last_download = std::time::Instant::now();
             client.received_data += progress * 4096;
@@ -129,7 +139,7 @@ impl ClientManager {
             client.received_data = 0;
             client.max_speed = client.speed.max(client.max_speed);
 
-            if client.last_download.elapsed().as_millis() < 1500 {
+            if client.last_download.elapsed().as_millis() < 2000 {
                 client.state = ClientState::Downloading;
                 downloading += 1;
             } else if client.last_connection.elapsed().as_millis() < 4000 {
@@ -140,6 +150,8 @@ impl ClientManager {
             }
 
             if client.state != ClientState::Downloading {
+                client.canceled_download_size = client.current_downloads_size;
+                client.canceled_download_progress = client.current_download_progress;
                 client.current_downloads_size = 0;
                 client.current_download_progress = 0;
             }
