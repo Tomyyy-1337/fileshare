@@ -37,6 +37,10 @@ impl FileManager {
         &self.view
     }
 
+    pub fn get(&self, index: usize) -> Option<FileInfo> {
+        self.view.iter().find(|(i, _)| *i == index).map(|(_, file)| file.clone())
+    }
+
     pub fn push(&mut self, path: PathBuf, size: usize) {
         let file = FileInfo {
             path,

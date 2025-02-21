@@ -114,13 +114,13 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         },
 
         Message::OpenFile(indx) => {
-            if let Some((_, FileInfo { path, .. })) = &state.file_manager.get_view().get(indx) {
+            if let Some(FileInfo { path, .. }) = &state.file_manager.get(indx) {
                 open::that(path).unwrap();
             }
         },
 
         Message::ShowInExplorer(indx) => {
-            if let Some((_, FileInfo { path, .. })) = &state.file_manager.get_view().get(indx) {
+            if let Some(FileInfo { path, .. }) = &state.file_manager.get(indx) {
                 #[cfg(target_os = "windows")]
                 let _result = Command::new("explorer")
                     .arg("/select,")
@@ -203,7 +203,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         },
 
         Message::ServerMessage(ServerMessage::DownloadRequest { index, ip } ) => {
-            let size = state.file_manager.get_view().get(index).map(|(_, file)| file.size).unwrap_or(0);
+            let size = state.file_manager.get(index).map(|file| file.size).unwrap_or(0);
             state.client_manager.add_download(ip, size);
         },
 
