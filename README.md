@@ -1,5 +1,7 @@
 # File share
-Share files in local network or over the internet. 
+GUI software to share files in local network or over the internet.
+
+Written in Rust using [Iced](https://github.com/iced-rs/iced). 
 
 ### Run with
 ```
