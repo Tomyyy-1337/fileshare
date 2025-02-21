@@ -24,6 +24,7 @@ function downloadButtonString() {
 }
 
 document.getElementById('downloadAll').addEventListener('click', async () => {
+    await fetch('/download-all');
     const links = Array.from(document.querySelectorAll('a.link'));
     const button = document.getElementById('downloadAll');
     const originalText = button.textContent;
@@ -61,7 +62,6 @@ document.getElementById('downloadAll').addEventListener('click', async () => {
 
 
 async function downloadFile(link) {
-    await fetch('/download-all');
     const url = link.href.slice(0, -1) + '0';
 
     let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);

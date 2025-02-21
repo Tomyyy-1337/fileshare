@@ -4,7 +4,7 @@ use local_ip_address::local_ip;
 use rfd::FileDialog;
 use iced::{stream::channel, window::Event, Size, Task};
 
-use crate::{server::{self, server, ServerMessage}, state::{ClientInfo, ClientState, FileInfo, State}};
+use crate::{state::file_manager::FileInfo, server::{self, server, ServerMessage}, state::state::State};
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -44,18 +44,18 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
 
         Message::ThemeChanged(theme) => {
             state.theme.set(&theme);
-            *state.current_theme.write().unwrap() = state.theme.get();
+            *state.theme.get_arc().write().unwrap() = state.theme.get();
             state.backup_state();
         },
         Message::NextTheme => {
             state.theme.next();
             state.backup_state();
-            *state.current_theme.write().unwrap() = state.theme.get();
+            *state.theme.get_arc().write().unwrap() = state.theme.get();
         }
         Message::PreviousTheme => {
             state.theme.previous();
             state.backup_state();
-            *state.current_theme.write().unwrap() = state.theme.get();
+            *state.theme.get_arc().write().unwrap() = state.theme.get();
         }
 
         Message::ToggleConnectionsView => {
@@ -102,33 +102,41 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         },
         
         Message::DeleteFile(indx) => {
-            state.file_path.write().unwrap().remove(&indx);
-            if state.file_path.read().unwrap().is_empty() {
+            state.file_manager.remove(indx);
+            if state.file_manager.get_view().is_empty() {
                 stop_server(state);
             } 
         },        
 
         Message::DeleteAllFiles => {
-            state.file_path.write().unwrap().clear();
+            state.file_manager.clear();
             stop_server(state);
         },
 
         Message::OpenFile(indx) => {
-            if let Some(FileInfo { path, .. }) = &state.file_path.read().unwrap().get(&indx) {
-                Command::new( "explorer" )
-                    .arg(path)
-                    .spawn( )
-                    .unwrap( );
+            if let Some((_, FileInfo { path, .. })) = &state.file_manager.get_view().get(indx) {
+                open::that(path).unwrap();
             }
         },
 
         Message::ShowInExplorer(indx) => {
-            if let Some(FileInfo { path, .. }) = &state.file_path.read().unwrap().get(&indx) {
-                Command::new( "explorer" )
+            if let Some((_, FileInfo { path, .. })) = &state.file_manager.get_view().get(indx) {
+                #[cfg(target_os = "windows")]
+                let _result = Command::new("explorer")
                     .arg("/select,")
                     .arg(path)
-                    .spawn( )
-                    .unwrap( );
+                    .spawn();
+            
+                #[cfg(target_os = "macos")]
+                let _result = Command::new("open")
+                    .arg("-R")
+                    .arg(path)
+                    .spawn();
+            
+                #[cfg(target_os = "linux")]
+                let _result = Command::new("xdg-open")
+                    .arg(path.parent().unwrap_or_else(|| Path::new("/")))
+                    .spawn();
             }
         },
 
@@ -179,79 +187,28 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         },
 
         Message::ServerMessage(ServerMessage::DownloadAllRequest { ip }) => {
-            let file_path = state.file_path.read().unwrap();
+            let file_path = state.file_manager.get_view();
             let file_size = file_path.iter().map(|(_, file)| file.size).sum();
-            drop(file_path);
-            
-            state.clients.entry(ip).and_modify(|client| {
-                client.current_downloads_size = file_size;
-                client.last_connection = std::time::Instant::now();
-                client.last_download = std::time::Instant::now();
-                client.state = ClientState::Downloading;
-            });
-            
-            state.active_downloads += 1;
+
+            state.client_manager.add_download(ip, file_size);
         },
 
         Message::ServerMessage(ServerMessage::Downloaded { index, ip }) => {
-            let mut filepath = state.file_path.write().unwrap();
-            if let Some(file) = filepath.get_mut(&index) {
-                file.download_count += 1;
-            } 
-            drop(filepath);
-            state.clients.entry(ip).and_modify(|client| {
-                client.download_count += 1;
-                client.last_connection = std::time::Instant::now();
-            });
-
-            state.total_downloads += 1;
+            state.file_manager.increment_download_count(index);
+            state.client_manager.download_done(ip);
         },
 
         Message::ServerMessage(ServerMessage::ClientConnected { ip }) => {
-            let len = state.clients.len();
-            state.clients
-                .entry(ip)
-                .and_modify(|client| client.last_connection = std::time::Instant::now())
-                .or_insert(ClientInfo { 
-                    index: len,
-                    download_count: 0, 
-                    last_connection: std::time::Instant::now(), 
-                    download_size: 0, 
-                    last_download: std::time::Instant::now() - std::time::Duration::from_secs(10), 
-                    received_data: 0, 
-                    speed: 0, 
-                    max_speed: 0,
-                    current_downloads_size: 0,
-                    state: ClientState::Connected,
-                    current_download_progress: 0,
-                });
+            state.client_manager.add_connection(ip);
         },
 
         Message::ServerMessage(ServerMessage::DownloadRequest { index, ip } ) => {
-            state.clients.entry(ip).and_modify(|client| {
-                client.last_connection = std::time::Instant::now();
-                client.last_download = std::time::Instant::now();
-                client.current_downloads_size += state.file_path.read().unwrap().get(&index).map(|file| file.size).unwrap_or(0);
-                client.state = ClientState::Downloading;
-            });
-            state.active_downloads += 1;
+            let size = state.file_manager.get_view().get(index).map(|(_, file)| file.size).unwrap_or(0);
+            state.client_manager.add_download(ip, size);
         },
 
         Message::ServerMessage(ServerMessage::DownloadActive { ip, num_packets }) => {
-            state.clients.entry(ip).and_modify(|client| {
-                client.last_connection = std::time::Instant::now();
-                client.last_download = std::time::Instant::now();
-                client.received_data += num_packets * 4096;
-                client.download_size += num_packets * 4096;
-                client.current_download_progress += num_packets * 4096;
-                client.state = if client.current_downloads_size == client.download_size {
-                    ClientState::Connected
-                } else {
-                    ClientState::Downloading
-                };
-            });
-
-            state.transmitted_data += num_packets * 4096;
+            state.client_manager.download_progress(ip, num_packets);
         },
 
         Message::Refresh => {
@@ -270,32 +227,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
                 }
             }
 
-            let mut active = 0;
-            let mut downloading = 0;
-
-            for (_, client) in state.clients.iter_mut() {
-                client.speed = client.received_data;
-                client.received_data = 0;
-                client.max_speed = client.speed.max(client.max_speed);
-
-                if client.last_download.elapsed().as_millis() < 1000 {
-                    client.state = ClientState::Downloading;
-                    downloading += 1;
-                } else if client.last_connection.elapsed().as_millis() < 3500 {
-                    client.state = ClientState::Connected;
-                    active += 1;
-                } else {
-                    client.state = ClientState::Disconnected;
-                }
-
-                if client.state != ClientState::Downloading {
-                    client.current_downloads_size = 0;
-                    client.current_download_progress = 0;
-                }
-            }
-            state.throughput = state.clients.iter().map(|(_, client)| client.speed).sum();
-            state.active_connections = active + downloading;
-            state.active_downloads = downloading;
+            state.client_manager.update();
         },
 
         Message::WindowEvent(_) => {},
@@ -341,15 +273,10 @@ fn add_files_from_path(state: &mut State, path: PathBuf) -> Option<Task<Message>
     let paths = find_files(&path);
 
     for file in paths {
-        if state.file_path.read().unwrap().iter().find(| (_, FileInfo { path, .. })| path == &file).is_some() {
+        if state.file_manager.get_view().iter().find(| (_, FileInfo { path, .. })| path == &file).is_some() {
             continue;
         }
-        state.file_path.write().unwrap().insert(state.file_index, FileInfo { 
-            path: file.clone(),
-            size: file.metadata().unwrap().len() as usize,
-            download_count: 0,
-        });
-        state.file_index += 1;
+        state.file_manager.push(file.clone(), file.metadata().unwrap().len() as usize);
     } 
     if state.server_handle.is_none() {
         return Some(start_server(state));
@@ -358,18 +285,18 @@ fn add_files_from_path(state: &mut State, path: PathBuf) -> Option<Task<Message>
 }
 
 fn start_server(state: &mut State) -> Task<Message> {
-    if state.file_path.read().unwrap().is_empty() {
+    if state.file_manager.get_view().is_empty() {
         return Task::none();
     }
     if state.ip_adress.is_none() || state.ip_adress != local_ip().ok() {
         return Task::none();
     }
 
-    let filepaths = state.file_path.clone();
+    let filepaths = state.file_manager.get_arc();
     let block_external_connections = state.block_external_connections.clone();
     let ip_adress = state.ip_adress;
     let port = state.port;
-    let current_theme = state.current_theme.clone();
+    let current_theme = state.theme.get_arc().clone();
     let stream = channel(10, move |tx: futures::channel::mpsc::Sender<_>| {
         let tx = tx.clone();
         async move {

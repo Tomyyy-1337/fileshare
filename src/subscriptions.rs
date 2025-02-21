@@ -1,6 +1,6 @@
 use iced::keyboard::key::Named;
 use iced::{keyboard, window, Subscription};
-use crate::state::State;
+use crate::state::state::State;
 
 use crate::update::Message;
 

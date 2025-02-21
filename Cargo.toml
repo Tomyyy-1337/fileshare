@@ -1,6 +1,6 @@
 [package]
 name = "fileshare"
-version = "0.1.12"
+version = "0.2.0"
 edition = "2021"
 
 [dependencies]
@@ -16,10 +16,11 @@ tokio = { version = "1.43.0", features = [] }
 tokio-util = "0.7.13"
 futures = "0.3.31"
 tera = "1.10.0"
-serde = { version = "1.0.217", features = ["derive"] }
+serde = { version = "1.0.218", features = ["derive"] }
+serde_json = "1.0.139"
 public-ip-address = { version = "0.3", features = ["blocking"] }
 bytes = "1.10.0"
-serde_json = "1.0.138"
+open = "5.3.2"
 
 [dependencies.iced]
 version = "0.13.1"

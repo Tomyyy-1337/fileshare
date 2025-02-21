@@ -9,7 +9,7 @@ use tera::Tera;
 use futures::{channel::mpsc::Sender, stream::Stream};
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use crate::{state, styles::color_multiply};
+use crate::{state::file_manager, views::styles::color_multiply};
 
 #[derive(Debug, Clone)]
 pub enum ServerMessage {
@@ -23,7 +23,7 @@ pub enum ServerMessage {
 pub async fn server(
     ip: IpAddr, 
     port: u16, 
-    path: Arc<RwLock<HashMap<usize, state::FileInfo>>>, 
+    path: Arc<RwLock<HashMap<usize, file_manager::FileInfo>>>, 
     tx: Sender<ServerMessage>,
     block_external_connections: Arc<AtomicBool>,
     theme: Arc<RwLock<Theme>>
@@ -80,7 +80,7 @@ fn create_static_route() -> impl Filter<Extract = impl warp::Reply, Error = warp
 }
 
 fn create_index_route(
-    path: Arc<RwLock<HashMap<usize, state::FileInfo>>>, 
+    path: Arc<RwLock<HashMap<usize, file_manager::FileInfo>>>, 
     theme: Arc<RwLock<Theme>>
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone 
 {
@@ -136,7 +136,7 @@ fn colors(theme: &Theme) -> (SendColor, SendColor, SendColor, SendColor, SendCol
 }
 
 fn create_refresh_route(
-    path: Arc<RwLock<HashMap<usize, state::FileInfo>>>,
+    path: Arc<RwLock<HashMap<usize, file_manager::FileInfo>>>,
     theme: Arc<RwLock<Theme>>
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone 
 {
@@ -147,7 +147,7 @@ fn create_refresh_route(
             let (primary, secondary, background, dark_background, text, text_secondary) = colors(&theme);
             let response = warp::reply::json(&UpdateData {
                 html,
-                size: size_string(path.read().unwrap().iter().map(|(_, state::FileInfo{size, ..})| size).sum()),
+                size: size_string(path.read().unwrap().iter().map(|(_, file_manager::FileInfo{size, ..})| size).sum()),
                 primary,
                 secondary,
                 background,
@@ -161,7 +161,7 @@ fn create_refresh_route(
 }
 
 fn fill_template(
-    path: Arc<RwLock<HashMap<usize, state::FileInfo>>>, 
+    path: Arc<RwLock<HashMap<usize, file_manager::FileInfo>>>, 
     template: &'static str,
     theme: Arc<RwLock<Theme>>
 ) -> String {
@@ -174,14 +174,14 @@ fn fill_template(
         .collect::<Vec<_>>();
     path.sort_by_key(|(indx, _)| *indx);
 
-    let files: Vec<FileInfo> = path.iter().rev().map(|(i, state::FileInfo{path, size, ..})| {
+    let files: Vec<FileInfo> = path.iter().rev().map(|(i, file_manager::FileInfo{path, size, ..})| {
         let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
         let size_string = size_string(*size);
         FileInfo { name, index: *i, size: size_string }
     }).collect();
     context.insert("files", &files);
 
-    let all_size: usize = path.iter().map(|(_, state::FileInfo{size, ..})| size).sum();
+    let all_size: usize = path.iter().map(|(_, file_manager::FileInfo{size, ..})| size).sum();
     context.insert("all_size", &size_string(all_size));
 
     let theme = theme.read().unwrap();
@@ -226,7 +226,7 @@ fn create_download_all_route(
 }
 
 fn create_download_route(
-    files: Arc<RwLock<HashMap<usize, state::FileInfo>>>, 
+    files: Arc<RwLock<HashMap<usize, file_manager::FileInfo>>>, 
     tx: Sender<ServerMessage>, 
     semaphor: Arc<Mutex<HashMap<IpAddr, Arc<tokio::sync::Semaphore>>>>
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
@@ -241,7 +241,7 @@ fn create_download_route(
                     tx.try_send(ServerMessage::DownloadRequest { index, ip: addr.unwrap().ip() })
                         .map_err(|_| warp::reject::reject())?;
                 }
-                let file_info: state::FileInfo = files.read()
+                let file_info: file_manager::FileInfo = files.read()
                     .unwrap()
                     .get(&index)
                     .cloned()
