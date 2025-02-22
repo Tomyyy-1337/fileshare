@@ -21,10 +21,9 @@ body  {
 }
 
 footer {
-    background-color: var(--background-color-2);
+    background-color: var(--footer-color);
     color: var(--text-color);
     text-align: center;
-    padding: 0.2em 1em;
     position: sticky;
     bottom: 0;
     gap: 100px;
@@ -33,15 +32,31 @@ footer {
     justify-content: center;
 }
 
+footer p {
+    margin: 10px;
+}
+
 footer div {
     display: flex;
     flex-direction: row;
     gap: 5px;
+    align-items: center;
 }
 
 footer a {
-    color: var(--primary-color);
+    color: var(--text-color-2);
     text-decoration: none;
+    background-color: var(--primary-color);
+    padding: 10px 20px;
+    border-radius: 5px;
+    display: inline-block;
+    text-align: center;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+footer a:hover {
+    background-color: var(--primary-color);
+    color: var(--secondary-color);
 }
 
 h1 {
@@ -116,6 +131,7 @@ h2 {
     footer div {
         margin: 0.5em auto;
         flex-direction: column;
+        justify-content: space-between;
     }
 
     footer p {

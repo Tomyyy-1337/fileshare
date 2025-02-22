@@ -117,6 +117,7 @@ async function updateContent() {
         document.documentElement.style.setProperty('--background-color-2', to_color(json.dark_background));
         document.documentElement.style.setProperty('--text-color', to_color(json.text));
         document.documentElement.style.setProperty('--text-color-2', to_color(json.text_secondary));
+        document.documentElement.style.setProperty('--footer-color', to_color(json.footer));
         allSize = size;
         document.getElementById('fileList').innerHTML = html;
         document.getElementById('downloadAll').textContent = "Download All Files (" + size + ")";

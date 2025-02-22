@@ -5,7 +5,7 @@ use iced::{theme::{Custom, Palette}, Theme};
 pub struct ThemeSelector {
     indx: usize,
     current: Arc<RwLock<Theme>>,
-    themes: [iced::Theme; 20],
+    themes: [iced::Theme; 19],
 }
 
 impl ThemeSelector {
@@ -57,7 +57,6 @@ impl ThemeSelector {
                 danger: iced::Color::from_rgb8(255, 0, 0),
             }))),
             Theme::Light,
-            Theme::SolarizedLight,
             Theme::CatppuccinLatte,
             Theme::GruvboxLight,
             Theme::TokyoNightLight,
@@ -76,7 +75,7 @@ impl ThemeSelector {
             Theme::Moonfly,
             Theme::KanagawaDragon,
         ];
-        let indx = 17;
+        let indx = 16;
         Self {
             indx,
             current: Arc::new(RwLock::new(themes[indx].clone())),

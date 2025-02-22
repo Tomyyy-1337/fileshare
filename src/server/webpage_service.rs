@@ -30,6 +30,7 @@ struct UpdateData {
     dark_background: SendColor,
     text: SendColor,
     text_secondary: SendColor,
+    footer: SendColor,
 }
 
 #[derive(Serialize)]
@@ -68,9 +69,9 @@ pub fn refresh_route(
         .map(move || {
             let html = fill_template(path.clone(), "file_list.html", theme.clone());
             let theme = theme.read().unwrap();
-            let (primary, secondary, background, dark_background, text, text_secondary) = colors(&theme);
+            let (primary, secondary, background, dark_background, text, text_secondary, footer) = colors(&theme);
             let size = size_string(path.read().unwrap().iter().map(|(_, file_manager::FileInfo{size, ..})| size).sum());
-            let response = warp::reply::json(&UpdateData {html, size, primary, secondary, background, dark_background, text, text_secondary });
+            let response = warp::reply::json(&UpdateData {html, size, primary, secondary, background, dark_background, text, text_secondary, footer  });
             response
         });
     refresh_route
@@ -101,13 +102,14 @@ pub fn fill_template(
     context.insert("all_size", &size_string(all_size));
 
     let theme = theme.read().unwrap();
-    let (primary, secondary, background, dark_background, text, text_secondary) = colors(&theme);
+    let (primary, secondary, background, dark_background, text, text_secondary, footer) = colors(&theme);
     context.insert("primary", &to_rgb_string(primary));
     context.insert("secondary", &to_rgb_string(secondary));
     context.insert("background", &to_rgb_string(background));
     context.insert("dark_background", &to_rgb_string(dark_background));
     context.insert("text", &to_rgb_string(text));
     context.insert("text_secondary", &to_rgb_string(text_secondary));
+    context.insert("footer", &to_rgb_string(footer));
 
     tera.render(template, &context).unwrap()
 }
@@ -127,11 +129,12 @@ pub fn size_string(size: usize) -> String {
     }
 }
 
-fn colors(theme: &Theme) -> (SendColor, SendColor, SendColor, SendColor, SendColor, SendColor) {
+fn colors(theme: &Theme) -> (SendColor, SendColor, SendColor, SendColor, SendColor, SendColor, SendColor) {
     let primary = SendColor::from_iced(theme.palette().primary);
     let secondary = SendColor::from_iced(color_multiply(theme.palette().primary, 0.8));
     let background = SendColor::from_iced(theme.palette().background);
     let dark_background = SendColor::from_iced(color_multiply(theme.palette().background, 0.8));
+    let footer = SendColor::from_iced(color_multiply(theme.palette().background, 0.6));
     let text = SendColor::from_iced(theme.palette().text);
     let text_secondary = SendColor::from_iced({
         let iced::Color { r, g, b, .. } = theme.palette().primary;
@@ -141,5 +144,5 @@ fn colors(theme: &Theme) -> (SendColor, SendColor, SendColor, SendColor, SendCol
             iced::Color::WHITE
         }
     });
-    (primary, secondary, background, dark_background, text, text_secondary)
+    (primary, secondary, background, dark_background, text, text_secondary, footer)
 }
