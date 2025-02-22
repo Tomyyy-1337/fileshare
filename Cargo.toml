@@ -21,6 +21,9 @@ serde_json = "1.0.139"
 public-ip-address = { version = "0.3", features = ["blocking"] }
 bytes = "1.10.0"
 open = "5.3.2"
+walkdir = "2.5.0"
+zip = { version = "2.2.2", features = ["deflate-flate2"] }
+clap = "4.5.30"
 
 [dependencies.iced]
 version = "0.13.1"

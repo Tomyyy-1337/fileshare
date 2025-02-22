@@ -6,6 +6,8 @@ use iced::{stream::channel, window::Event, Size, Task};
 
 use crate::{server::router::server, state::{file_manager::FileInfo, state::State}};
 
+use super::file_manager::{FileManager, ZipMessage};
+
 #[derive(Debug, Clone)]
 pub enum ServerMessage {
     Downloaded { index: usize , ip: IpAddr },
@@ -18,6 +20,7 @@ pub enum ServerMessage {
 #[derive(Debug, Clone)]
 pub enum Message {
     ServerMessage(ServerMessage),
+    ZipMessage(ZipMessage),
     ThemeChanged(iced::Theme),
     NextTheme,
     PreviousTheme,
@@ -39,11 +42,61 @@ pub enum Message {
     Refresh,
     ShowQrCode(bool),
     WindowEvent(iced::window::Event),
-    RetryIp
+    RetryIp,
+    SelectZipExplorer,
+    ZipCancel(PathBuf),
 }
 
 pub fn update(state: &mut State, message: Message) -> Task<Message> {
     match message {
+        Message::ZipMessage(ZipMessage::Done{path}) => {
+            state.file_manager.zip_compressing_done(&path);
+            if state.server_handle.is_none() {
+                return start_server(state);
+            }
+        },
+
+        Message::ZipMessage(ZipMessage::Started{path, num_files}) => {
+            state.file_manager.set_zip_num_files(&path, num_files);
+        },
+
+        Message::ZipMessage(ZipMessage::Progress{path}) => {
+            state.file_manager.update_zip_compressing(&path);
+        },
+
+        Message::ZipCancel(path) => {
+            state.file_manager.zip_compressing_canceld(&PathBuf::from(path));
+        },
+
+        Message::SelectZipExplorer => {
+            let path: Option<PathBuf> = FileDialog::new()
+                .add_filter("Any", &["*"])
+                .pick_folder();
+
+            if let Some(path) = path {
+                if state.file_manager.already_compressed(&path) {
+                    return Task::none();
+                }
+
+                let path_clone = path.clone();
+                let stream = channel(100, move |tx: futures::channel::mpsc::Sender<_>| {
+                    let tx = tx.clone();
+                    let path = path.clone();
+                    async move {
+                        FileManager::start_zip_task(path, tx).await;
+                    }
+                });
+            
+                let task = Task::run(stream, |server_message| {
+                    Message::ZipMessage(server_message)
+                });
+            
+                let (task, handle) = Task::abortable(task);
+                state.file_manager.add_new_zip_compressing(path_clone, handle);
+                return task;
+            }
+        },
+
         Message::RetryIp => {
             state.ip_adress = local_ip().ok();
             if state.ip_adress.is_some() {
@@ -190,7 +243,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
         Message::WindowEvent(Event::Resized(Size { width, height })) => state.size = (width as f32, height as f32),
 
         Message::WindowEvent(Event::FileDropped(path)) => {
-            if let Some(task) = add_files_from_path(state, path) {
+            if let Some(task) = add_files_from_path(state, path, false) {
                 return task;
             }
         },
@@ -239,7 +292,7 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
             state.client_manager.update();
         },
 
-        Message::WindowEvent(_) => {},
+        Message::WindowEvent(_) => {}
         Message::None => {}
     }
 
@@ -271,21 +324,21 @@ fn find_files(path: &PathBuf) -> Vec<PathBuf> {
 fn add_files_from_path_list(state: &mut State, paths: Vec<PathBuf>) -> Task<Message> {
     let mut return_tasks = Task::none();
     for path in paths {
-        if let Some(task) = add_files_from_path(state, path) {
+        if let Some(task) = add_files_from_path(state, path, false) {
             return_tasks = task
         }
     }
     return_tasks
 }
 
-fn add_files_from_path(state: &mut State, path: PathBuf) -> Option<Task<Message>> {
+fn add_files_from_path(state: &mut State, path: PathBuf, is_zip: bool) -> Option<Task<Message>> {
     let paths = find_files(&path);
 
     for file in paths {
         if state.file_manager.get_view().iter().find(| (_, FileInfo { path, .. })| path == &file).is_some() {
             continue;
         }
-        state.file_manager.push(file.clone(), file.metadata().unwrap().len() as usize);
+        state.file_manager.push(file.clone(), is_zip);
     } 
     if state.server_handle.is_none() {
         return Some(start_server(state));

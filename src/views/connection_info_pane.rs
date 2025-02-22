@@ -162,7 +162,7 @@ pub fn connection_info_pane(state: &State) -> iced::Element<Message> {
     connections.into()
 }
 
-fn format_time(time: Duration) -> String {
+pub fn format_time(time: Duration) -> String {
     let secs = time.as_secs();
     let mins = secs / 60;
     let hours = mins / 60;

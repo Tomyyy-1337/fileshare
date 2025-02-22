@@ -1,5 +1,5 @@
 use iced::widget::{self, button, column, container, horizontal_rule, hover, row, text, tooltip, Space};
-use crate::{server::webpage_service::size_string, state::{file_manager::FileInfo, state::State}, state::update::Message, views::styles::CustomStyles};
+use crate::{server::webpage_service::size_string, state::{file_manager::{CompressingZip, FileInfo}, state::State, update::Message}, views::styles::CustomStyles};
 
 use super::root_view::{H1_SIZE, H2_SIZE, P_SIZE};
 
@@ -15,8 +15,13 @@ pub fn upload_pane(state: &State) -> iced::Element<Message> {
         .on_press(Message::SelectFolderExplorer)
         .width(iced::Length::FillPortion(1));
 
-    let url_select_row = row![url_select_button, url_select_button2]
-        .spacing(5);
+    let zip_select_button = button("Zip Folder")
+        .on_press(Message::SelectZipExplorer)
+        .width(iced::Length::FillPortion(1));
+
+    let url_select_row = row![url_select_button, url_select_button2, zip_select_button]
+        .spacing(5)
+        .width(iced::Length::Fill);
 
     let mut pane = column![
         upload_files,
@@ -24,11 +29,13 @@ pub fn upload_pane(state: &State) -> iced::Element<Message> {
     ]
     .padding(5)
     .spacing(10)
-    .width(iced::Length::Fill);
+    .width(iced::Length::Fill)
+    .align_x(iced::alignment::Horizontal::Center);
     
     let file_path = state.file_manager.get_view();
+    let zipping_files = state.file_manager.get_zip_compressing();
 
-    if !file_path.is_empty() {
+    if !file_path.is_empty() || !zipping_files.is_empty() {
         let shared_files_text = match file_path.len() {
             1 => "Shared File".to_owned(),
             _ => format!("Shared Files [{}]", file_path.len())   
@@ -38,8 +45,41 @@ pub fn upload_pane(state: &State) -> iced::Element<Message> {
             .size(H1_SIZE);
 
         let mut files_list = column![];
+        for (color, (path, CompressingZip { num_files, progress, ..})) in zipping_files.iter().enumerate() {
+            let text_file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
+            let text_file_name = text!("{}.zip (Compression in progress)", text_file_name)
+                .size(H2_SIZE)
+                .height(iced::Length::Fixed(32.0))
+                .width(iced::Length::Fill);
 
-        for (color, (i, FileInfo{path, download_count, size})) in file_path.iter().cloned().rev().enumerate() {
+            let cancle_button = button("Cancel")
+                .on_press(Message::ZipCancel((*path).clone()));
+
+            let progress_bar = widget::progress_bar(0.0..=*num_files as f32, *progress as f32)
+                .width(iced::Length::Fill)
+                .height(iced::Length::Fixed(16.0));
+
+            let progress_row = row![
+                progress_bar,
+                cancle_button
+            ]
+            .align_y(iced::alignment::Vertical::Center)
+            .spacing(10);
+            
+            let col = column![
+                text_file_name,
+                progress_row,
+            ];
+
+            let col = container(col)
+                .padding(12)
+                .style(CustomStyles::darker_background(if color & 1 == 0 { 0.9 } else { 0.7 }));
+
+            files_list = files_list.push(col);
+        } 
+
+        for (color, (i, FileInfo{path, download_count, size, ..})) in file_path.iter().cloned().rev().enumerate() {
+            let color = color + zipping_files.len();
             let text_file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
             let text_file_name = text(text_file_name)
                 .size(H2_SIZE)
@@ -96,7 +136,7 @@ pub fn upload_pane(state: &State) -> iced::Element<Message> {
             .spacing(5);
 
             let row = container(row)
-                .style(CustomStyles::darker_background(if i & 1 == 0 { 0.9 } else { 0.7 }));
+                .style(CustomStyles::darker_background(if color & 1 == 0 { 0.9 } else { 0.7 }));
 
             let title_row = row![text_file_name, meta_col]
                 .spacing(5)
@@ -138,19 +178,17 @@ pub fn upload_pane(state: &State) -> iced::Element<Message> {
             ).into()
         };
         
-        pane = pane.push(url_select_row.width(iced::Length::Fill));
+        pane = pane.push(url_select_row);
         pane = pane.push(uploaded_files);
-        pane = pane.push(horizontal_rule(5).style(CustomStyles::horizontal_rule)
-        );
+        pane = pane.push(horizontal_rule(5).style(CustomStyles::horizontal_rule));
         pane = pane.push(files_list);
         pane = pane.push(delete_all_button);
-        pane = pane.align_x(iced::alignment::Horizontal::Center);
     } else {
         pane = pane.push(text!("No file selected!")
             .size(P_SIZE));
         pane = pane.push(text!("Drag and drop a file inside the window or click the button below to select a file.")
             .size(P_SIZE));
-        pane = pane.push(url_select_row.width(iced::Length::Fill));
+        pane = pane.push(url_select_row);
     }
 
     let upload_pane = container(pane)
