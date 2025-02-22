@@ -181,7 +181,7 @@ impl FileManager {
         let mut zip = zip::ZipWriter::new(file);
         let options = SimpleFileOptions::default()
             .compression_method(zip::CompressionMethod::DEFLATE)
-            .compression_level(Some(9))
+            .compression_level(Some(6))
             .large_file(true)
             .unix_permissions(0o755);
 
