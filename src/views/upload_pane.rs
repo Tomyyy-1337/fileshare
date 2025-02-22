@@ -1,4 +1,4 @@
-use iced::widget::{self, button, column, container, horizontal_rule, hover, row, text, tooltip, Space};
+use iced::{alignment, widget::{self, button, column, container, horizontal_rule, hover, row, text, tooltip, Space}};
 use crate::{server::webpage_service::size_string, state::{file_manager::{CompressingZip, FileInfo}, state::State, update::Message}, views::styles::CustomStyles};
 
 use super::root_view::{H1_SIZE, H2_SIZE, P_SIZE};
@@ -75,11 +75,13 @@ pub fn upload_pane(state: &State) -> iced::Element<Message> {
                 .width(iced::Length::Shrink);
 
             let progress_bar = widget::progress_bar(0.0..=*num_files as f32, *progress as f32)
+                .style(CustomStyles::progress_bar)
                 .width(iced::Length::Fill)
-                .height(iced::Length::Fixed(16.0));
+                .height(iced::Length::Fixed(18.0));
 
             let progress_text = text!("{} / {}", progress, num_files)
                 .size(P_SIZE)
+                .align_y(alignment::Vertical::Center)
                 .width(iced::Length::Shrink);
 
             let row = row![progress_bar, progress_text]
