@@ -19,6 +19,15 @@ pub fn upload_pane(state: &State) -> iced::Element<Message> {
         .on_press(Message::SelectZipExplorer)
         .width(iced::Length::FillPortion(1));
 
+    let zip_select_button = tooltip(
+        zip_select_button,
+        container(text("Select a folder to compress into a zip file.").size(P_SIZE))
+            .padding(10)
+            .width(iced::Length::Fixed(200.0))
+            .style(container::rounded_box),
+        tooltip::Position::Bottom
+    );
+
     let url_select_row = row![url_select_button, url_select_button2, zip_select_button]
         .spacing(5)
         .width(iced::Length::Fill);
@@ -185,8 +194,8 @@ pub fn upload_pane(state: &State) -> iced::Element<Message> {
         pane = pane.push(delete_all_button);
     } else {
         pane = pane.push(text!("No file selected!")
-            .size(P_SIZE));
-        pane = pane.push(text!("Drag and drop a file inside the window or click the button below to select a file.")
+            .size(H2_SIZE));
+        pane = pane.push(text!("Drag and drop a file inside the window or click one of the buttons below to select files to share.")
             .size(P_SIZE));
         pane = pane.push(url_select_row);
     }

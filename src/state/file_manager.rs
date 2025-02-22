@@ -55,7 +55,7 @@ impl FileManager {
     }
 
     
-    fn path_to_zip_path(path: &Path) -> PathBuf {
+    fn path_to_zip(path: &Path) -> PathBuf {
         let file_name = path.file_name().unwrap().to_str().unwrap();
         Path::new(&FileManager::temp_dir()).join(file_name).with_extension("zip")
     }
@@ -84,7 +84,7 @@ impl FileManager {
     pub fn zip_compressing_canceld(&mut self, path: &PathBuf) {
         let info = self.compressing_zips.remove(path);
         if let Some(info) = info {
-            let _ = std::fs::remove_file(Self::path_to_zip_path(path));
+            let _ = std::fs::remove_file(Self::path_to_zip(path));
             info.handle.abort();
         }
     }
@@ -97,7 +97,7 @@ impl FileManager {
     pub fn zip_compressing_done(&mut self, path: &PathBuf) {
         self.compressing_zips.remove(path);
 
-        let write_dir = Self::path_to_zip_path(path);
+        let write_dir = Self::path_to_zip(path);
 
         if !self.view.iter().any(|(_, file)| file.path == write_dir) {
             self.push(write_dir, true);
@@ -170,7 +170,7 @@ impl FileManager {
     }
 
     pub async fn zip_task(path: PathBuf, mut tx: futures::channel::mpsc::Sender<ZipMessage>) {
-        let dst_path = Self::path_to_zip_path(&path);
+        let dst_path = Self::path_to_zip(&path);
         let _ = std::fs::create_dir_all(dst_path.parent().unwrap());
         let file = File::create(&dst_path).unwrap();
 
@@ -213,7 +213,6 @@ impl FileManager {
         let _ = zip.finish();
         let _ = tx.send(ZipMessage::Done{path: prefix.to_path_buf()}).await;
     }
-
 
     pub async fn start_zip_task(path: PathBuf, tx: futures::channel::mpsc::Sender<ZipMessage>) {
         let handle = task::spawn(async move {
