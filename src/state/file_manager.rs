@@ -7,8 +7,6 @@ use walkdir::WalkDir;
 use zip::write::SimpleFileOptions;
 use iced::task::Handle;
 
-pub const TEMP_DIR: &str = ".\\temp";
-
 #[derive(Debug, Clone)]
 pub enum ZipMessage {
     Done{path: PathBuf},
@@ -40,7 +38,7 @@ pub struct FileManager {
 }
 
 impl FileManager {
-    pub fn new() -> Self {
+    pub fn new() -> Self {        
         Self {
             paths: Arc::new(RwLock::new(HashMap::new())),
             view: Vec::new(),
@@ -49,10 +47,17 @@ impl FileManager {
         }
     }
 
+    fn temp_dir() -> PathBuf{
+        #[cfg(not(feature = "appdata"))]
+        return PathBuf::from(".\\temp");
+        #[cfg(feature = "appdata")]
+        return PathBuf::from(format!("{}\\Fileshare\\temp", std::env::var("APPDATA").unwrap_or_else(|_| String::from("./appdata/temp"))));
+    }
+
     
     fn path_to_zip_path(path: &Path) -> PathBuf {
         let file_name = path.file_name().unwrap().to_str().unwrap();
-        Path::new(TEMP_DIR).join(file_name).with_extension("zip")
+        Path::new(&FileManager::temp_dir()).join(file_name).with_extension("zip")
     }
 
     pub fn add_new_zip_compressing(&mut self, path: PathBuf, handle: Handle) {
@@ -86,7 +91,7 @@ impl FileManager {
 
     pub fn already_compressed(&self, path: &PathBuf) -> bool {
         self.compressing_zips.contains_key(path) ||
-        self.view.iter().any(|(_, file)| file.path.file_name().unwrap() == PathBuf::from(TEMP_DIR).join(path.file_name().unwrap()).with_extension("zip").file_name().unwrap())
+        self.view.iter().any(|(_, file)| file.path.file_name().unwrap() == PathBuf::from(Self::temp_dir()).join(path.file_name().unwrap()).with_extension("zip").file_name().unwrap())
     }
 
     pub fn zip_compressing_done(&mut self, path: &PathBuf) {
@@ -175,7 +180,8 @@ impl FileManager {
 
         let mut zip = zip::ZipWriter::new(file);
         let options = SimpleFileOptions::default()
-            .compression_method(zip::CompressionMethod::Deflated)
+            .compression_method(zip::CompressionMethod::DEFLATE)
+            .compression_level(Some(9))
             .large_file(true)
             .unix_permissions(0o755);
 
