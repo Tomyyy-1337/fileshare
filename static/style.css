@@ -1,6 +1,14 @@
-body {
+body  {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    margin: 0;
+    max-width: 100%;
     font-family: Arial, sans-serif;
     background-color: var(--background-color);
+}
+
+#main {
     color: var(--text-color);
     display: flex;
     flex-direction: column;
@@ -8,7 +16,32 @@ body {
     width: 96%;
     margin: 0 auto;
     max-width: 1000px;
-    gap: 15px;        
+    gap: 15px;   
+    flex: 1;
+}
+
+footer {
+    background-color: var(--background-color-2);
+    color: var(--text-color);
+    text-align: center;
+    padding: 0.2em 1em;
+    position: sticky;
+    bottom: 0;
+    gap: 100px;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+}
+
+footer div {
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+}
+
+footer a {
+    color: var(--primary-color);
+    text-decoration: none;
 }
 
 h1 {
@@ -78,5 +111,18 @@ h2 {
         margin-top: 10px;
         width: 90%;
         padding: 15px 20px;
+    }
+
+    footer div {
+        margin: 0.5em auto;
+        flex-direction: column;
+    }
+
+    footer p {
+        margin: 0.5em;
+    }
+
+    footer {
+        gap: 0;
     }
 }

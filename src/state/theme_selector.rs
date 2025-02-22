@@ -11,6 +11,7 @@ pub struct ThemeSelector {
 impl ThemeSelector {
     pub fn set_indx(&mut self, indx: usize) {
         self.indx = indx;
+        self.current.write().unwrap().clone_from(&self.themes[self.indx]);
     }
 
     pub fn get(&self) -> iced::Theme {
@@ -27,12 +28,14 @@ impl ThemeSelector {
 
     pub fn next(&mut self) {
         self.indx = (self.indx + 1).min(self.themes.len() - 1);
+        self.current.write().unwrap().clone_from(&self.themes[self.indx]);
     }
 
     pub fn previous(&mut self) {
         if let Some(val) = self.indx.checked_sub(1) {
             self.indx = val;
         }
+        self.current.write().unwrap().clone_from(&self.themes[self.indx]);
     }
 
     pub fn available_themes(&self) -> &[iced::Theme] {
@@ -41,6 +44,7 @@ impl ThemeSelector {
 
     pub fn set(&mut self, theme: &iced::Theme) {
         self.indx = self.themes.iter().position(|t| t == theme).unwrap_or(0);
+        self.current.write().unwrap().clone_from(theme);
     }
 
     pub fn new() -> Self {

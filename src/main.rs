@@ -1,4 +1,4 @@
-// #![windows_subsystem = "windows"]
+#![windows_subsystem = "windows"]
 
 mod state {
     pub mod state;
@@ -24,7 +24,7 @@ mod server {
     mod counting_stream;
 }
 
-use state::{subscriptions::subscription, update::update};
+use state::{file_manager::FileManager, subscriptions::subscription, update::update};
 use views::root_view::view;
 use iced::Size;
 
@@ -41,8 +41,7 @@ fn main() -> iced::Result {
         .theme(|state| state.theme.get())
         .run();
 
-    // delet all files in the temp folder
-    let _ = std::fs::remove_dir_all("./temp");
+    let _ = std::fs::remove_dir_all(FileManager::temp_dir());
 
     Ok(())
 }

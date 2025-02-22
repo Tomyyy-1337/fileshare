@@ -106,18 +106,15 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
 
         Message::ThemeChanged(theme) => {
             state.theme.set(&theme);
-            *state.theme.get_arc().write().unwrap() = state.theme.get();
             state.backup_state();
         },
         Message::NextTheme => {
             state.theme.next();
             state.backup_state();
-            *state.theme.get_arc().write().unwrap() = state.theme.get();
         }
         Message::PreviousTheme => {
             state.theme.previous();
             state.backup_state();
-            *state.theme.get_arc().write().unwrap() = state.theme.get();
         }
 
         Message::ToggleConnectionsView => {

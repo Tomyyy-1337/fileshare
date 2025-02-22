@@ -15,13 +15,22 @@ pub fn upload_pane(state: &State) -> iced::Element<Message> {
         .on_press(Message::SelectFolderExplorer)
         .width(iced::Length::FillPortion(1));
 
+    let url_select_button2 = tooltip(
+        url_select_button2,
+        container(text("Share files from folders as individual files.").size(P_SIZE))
+            .padding(10)
+            .width(iced::Length::Fixed(200.0))
+            .style(container::rounded_box),
+        tooltip::Position::Bottom
+    );
+
     let zip_select_button = button("Zip Folder")
         .on_press(Message::SelectZipExplorer)
         .width(iced::Length::FillPortion(1));
 
     let zip_select_button = tooltip(
         zip_select_button,
-        container(text("Select a folder to compress into a zip file.").size(P_SIZE))
+        container(text("Share a compressed folder containing multiple files/folders retaining their structure.").size(P_SIZE))
             .padding(10)
             .width(iced::Length::Fixed(200.0))
             .style(container::rounded_box),
@@ -56,34 +65,45 @@ pub fn upload_pane(state: &State) -> iced::Element<Message> {
         let mut files_list = column![];
         for (color, (path, CompressingZip { num_files, progress, ..})) in zipping_files.iter().enumerate() {
             let text_file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
-            let text_file_name = text!("{}.zip (Compression in progress)", text_file_name)
+            let text_file_name = text!("{}.zip", text_file_name)
                 .size(H2_SIZE)
                 .height(iced::Length::Fixed(32.0))
                 .width(iced::Length::Fill);
 
             let cancle_button = button("Cancel")
-                .on_press(Message::ZipCancel((*path).clone()));
+                .on_press(Message::ZipCancel((*path).clone()))
+                .width(iced::Length::Shrink);
 
             let progress_bar = widget::progress_bar(0.0..=*num_files as f32, *progress as f32)
                 .width(iced::Length::Fill)
                 .height(iced::Length::Fixed(16.0));
 
-            let progress_row = row![
-                progress_bar,
-                cancle_button
-            ]
+            let progress_text = text!("{} / {}", progress, num_files)
+                .size(P_SIZE)
+                .width(iced::Length::Shrink);
+
+            let row = row![progress_bar, progress_text]
+                .spacing(5)
+                .width(iced::Length::Fill);
+
+            let progress_row = container(
+                row
+            )
             .align_y(iced::alignment::Vertical::Center)
-            .spacing(10);
+            .height(iced::Length::Fixed(32.0));
             
-            let col = column![
-                text_file_name,
-                progress_row,
-            ];
+            let row = row![text_file_name, cancle_button]
+                .spacing(5)
+                .width(iced::Length::Fill)
+                .align_y(iced::alignment::Vertical::Center);
+
+            let col = column![row, progress_row]
+                .spacing(5);
 
             let col = container(col)
                 .padding(12)
                 .style(CustomStyles::darker_background(if color & 1 == 0 { 0.9 } else { 0.7 }));
-
+        
             files_list = files_list.push(col);
         } 
 

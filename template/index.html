@@ -16,12 +16,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
-    <h1>Fileshare</h1>  
-    <button class="link" id="downloadAll">Download All Files ({{  all_size  }})</button>
-    <div id="fileList" class="flex">
-        {% include "file_list.html" %}
+    <div id="main">    
+        <h1>Fileshare</h1>  
+        <button class="link" id="downloadAll">Download All Files ({{  all_size  }})</button>
+        <div id="fileList" class="flex">
+            {% include "file_list.html" %}
+        </div>
     </div>
-    <div style="height: 300px;"></div>
     <script src="/static/script.js"></script>
+    <footer>
+        <div><p>Source: </p><p><a href="https://github.com/Tomyyy-1337/fileshare/">GitHub</a></p></div>
+        <div><p>Latest Release: </p> <p><a href="https://github.com/Tomyyy-1337/fileshare/releases/latest">GitHub Releases</a></p></div>
+    </footer>
 </body>
 </html>

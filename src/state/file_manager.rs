@@ -47,7 +47,7 @@ impl FileManager {
         }
     }
 
-    fn temp_dir() -> PathBuf{
+    pub fn temp_dir() -> PathBuf{
         #[cfg(not(feature = "appdata"))]
         return PathBuf::from(".\\temp");
         #[cfg(feature = "appdata")]
