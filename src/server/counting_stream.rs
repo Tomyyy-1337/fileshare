@@ -33,17 +33,18 @@ where
                 let index = self.index;
                 let ip = self.ip;
                 let counter = self.counter;
-                let _ = self.tx.try_send(ServerMessage::DownloadActive { ip, num_packets: counter });
+                let _ = self.tx.try_send(ServerMessage::DownloadActive { ip, num_bytes: counter });
                 let _ = self.tx.try_send(ServerMessage::Downloaded { index, ip });
                 Poll::Ready(None)
             }
             Poll::Ready(Some(Err(_))) => Poll::Ready(None),
             Poll::Ready(Some(data)) => {
-                self.counter += 1;
+                let size = data.as_ref().map(|b| b.len()).unwrap_or(0);
+                self.counter += size;
                 if self.last_send_time.elapsed().as_millis() > 250 {
                     let ip = self.ip;
                     let counter = self.counter;
-                    let _ = self.tx.try_send(ServerMessage::DownloadActive { ip, num_packets: counter });
+                    let _ = self.tx.try_send(ServerMessage::DownloadActive { ip, num_bytes: counter });
                     self.counter = 0;
                     self.last_send_time = tokio::time::Instant::now();
                 }

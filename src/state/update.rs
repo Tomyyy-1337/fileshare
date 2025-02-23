@@ -12,7 +12,7 @@ use super::file_manager::{FileManager, ZipMessage};
 pub enum ServerMessage {
     Downloaded { index: usize , ip: IpAddr },
     ClientConnected { ip: IpAddr },
-    DownloadActive { ip: IpAddr, num_packets: usize },
+    DownloadActive { ip: IpAddr, num_bytes: usize },
     DownloadRequest { index: usize, ip: IpAddr },
     DownloadAllRequest { ip: IpAddr },
 }
@@ -266,8 +266,8 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
             state.client_manager.add_download(ip, size);
         },
 
-        Message::ServerMessage(ServerMessage::DownloadActive { ip, num_packets }) => {
-            state.client_manager.download_progress(ip, num_packets);
+        Message::ServerMessage(ServerMessage::DownloadActive { ip, num_bytes }) => {
+            state.client_manager.download_progress(ip, num_bytes);
         },
 
         Message::Refresh => {

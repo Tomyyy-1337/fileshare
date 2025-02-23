@@ -117,9 +117,9 @@ impl ClientManager {
             }
             client.last_connection = std::time::Instant::now();
             client.last_download = std::time::Instant::now();
-            client.received_data += progress * 4096;
-            client.download_size += progress * 4096;
-            client.current_download_progress += progress * 4096;
+            client.received_data += progress;
+            client.download_size += progress;
+            client.current_download_progress += progress;
             client.state = if client.current_downloads_size == client.download_size {
                 ClientState::Connected
             } else {
@@ -127,7 +127,7 @@ impl ClientManager {
             };
         });
 
-        self.transmitted_data += progress * 4096;
+        self.transmitted_data += progress;
     }
 
     pub fn update(&mut self) {
