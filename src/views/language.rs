@@ -1,13 +1,10 @@
-#![allow(unreachable_patterns)]
-#![deny(unconditional_recursion)]
-
 use enum_all_variants::AllVariants;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, AllVariants, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum Language {
     English,
-    Deutsch
+    Deutsch,
 }
 
 macro_rules! generate_language_functions {
@@ -15,8 +12,10 @@ macro_rules! generate_language_functions {
         impl Language {
             $(
                 pub fn $field(&self) -> &'static str {
+                    #![allow(unreachable_patterns)]
                     match self {
                         $(Language::$lang => $value,)*
+                        _ => [$($value),+][0], 
                     }
                 }
             )*
@@ -159,7 +158,6 @@ generate_language_functions! {
     }
     connection_info {
         English: "Download URL"
-        Deutsch: "Download URL"
     }
     block_external_connections_tooltip {
         English: "Block external connections to the server. Check this box if you want only devices on the local network to access the files."
