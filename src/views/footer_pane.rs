@@ -1,4 +1,4 @@
-use iced::widget::{self, button, container, pick_list, row, text, tooltip};
+use iced::widget::{self, container, pick_list, row, text, tooltip};
 use crate::{state::state::State, state::update::Message, views::{styles::CustomStyles, styles::color_multiply}};
 
 use super::{language::Language, root_view::{H2_SIZE, P_SIZE}};

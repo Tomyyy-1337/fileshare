@@ -8,17 +8,28 @@ pub enum Language {
 }
 
 macro_rules! generate_language_functions {
-    ($($field:ident { $($lang:ident: $value:expr$(,)?)*}$(,)?)* $(,)?) => {
+    ( $( $field:ident { $($lang:ident: $value:expr)* } )* ) => {
+        #[allow(unreachable_patterns)]
         impl Language {
             $(
-                pub fn $field(&self) -> &'static str {
-                    #![allow(unreachable_patterns)]
-                    match self {
-                        $(Language::$lang => $value,)*
-                        _ => [$($value),+][0], 
-                    }
-                }
+                generate_language_functions!(@field_impl $field { $($lang: $value)* } );
             )*
+        }
+    };
+
+    (@field_impl $field:ident {} ) => {
+        #[deprecated(note = "No lanuage string provided for this field. Defaulting to 'ToDo!'")]
+        pub fn $field(&self) -> &'static str {
+            "ToDo!"
+        }
+    };
+
+    (@field_impl $field:ident { $($lang:ident: $value:expr)+ } ) => {
+        pub fn $field(&self) -> &'static str {
+            match self {
+                $(Language::$lang => $value,)+
+                _ => [$($value),+][0]
+            }
         }
     };
 }
@@ -57,7 +68,7 @@ generate_language_functions! {
         Deutsch: "Übertragene Daten"
     }
     upload_file {
-        English: "Upload",
+        English: "Upload"
         Deutsch: "Hochladen"
     }
     no_file_selected {
@@ -81,7 +92,7 @@ generate_language_functions! {
         Deutsch: "Teile Dateien aus Ordnern als einzelne Dateien."
     }
     zip_folder {
-        English: "Zip Files",
+        English: "Zip Files"
         Deutsch: "Ordner zippen"
     }
     zip_folder_tooltip {

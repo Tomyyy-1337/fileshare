@@ -1,5 +1,7 @@
 #![windows_subsystem = "windows"]
 
+#![allow(dead_code)]
+
 mod state {
     pub mod state;
     pub mod update;
