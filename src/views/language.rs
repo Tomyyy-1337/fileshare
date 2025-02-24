@@ -9,6 +9,7 @@ pub enum Language {
 
 macro_rules! generate_language_functions {
     ( $( $field:ident { $($lang:ident: $value:expr$(,)?)* })* ) => {
+        #[allow(unreachable_patterns)]
         impl Language {
             $(
                 generate_language_functions!(@field_impl $field { $($lang: $value,)* } );
@@ -27,7 +28,7 @@ macro_rules! generate_language_functions {
         pub fn $field(&self) -> &'static str {
             match self {
                 $(Language::$lang => $value,)*  
-                _ => $first_value, 
+                Language::$first_lang | _ => $first_value, 
             }
         }
     };
