@@ -8,27 +8,26 @@ pub enum Language {
 }
 
 macro_rules! generate_language_functions {
-    ( $( $field:ident { $($lang:ident: $value:expr)* } )* ) => {
-        #[allow(unreachable_patterns)]
+    ( $( $field:ident { $($lang:ident: $value:expr$(,)?)* })* ) => {
         impl Language {
             $(
-                generate_language_functions!(@field_impl $field { $($lang: $value)* } );
+                generate_language_functions!(@field_impl $field { $($lang: $value,)* } );
             )*
         }
     };
-
-    (@field_impl $field:ident {} ) => {
-        #[deprecated(note = "No lanuage string provided for this field. Defaulting to 'ToDo!'")]
+    
+    (@field_impl $field:ident {}) => {
+        #[deprecated(note = "No language string provided for this field. Defaulting to 'ToDo!'")]
         pub fn $field(&self) -> &'static str {
             "ToDo!"
         }
     };
-
-    (@field_impl $field:ident { $($lang:ident: $value:expr)+ } ) => {
+    
+    (@field_impl $field:ident { $first_lang:ident: $first_value:expr, $($lang:ident: $value:expr,)* }) => {
         pub fn $field(&self) -> &'static str {
             match self {
-                $(Language::$lang => $value,)+
-                _ => [$($value),+][0]
+                $(Language::$lang => $value,)*  
+                _ => $first_value, 
             }
         }
     };
