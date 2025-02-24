@@ -9,6 +9,7 @@ pub enum Language {
 
 macro_rules! generate_language_functions {
     ( $( $field:ident { $($lang:ident: $value:expr$(,)?)* })* ) => {
+        // #[allow(dead_code)] // Dont show warnings for unused text fields
         #[allow(unreachable_patterns)]
         impl Language {
             $(
@@ -177,6 +178,10 @@ generate_language_functions! {
     show_qr_code {
         English: "Show QR Code"
         Deutsch: "QR Code anzeigen"
+    }
+    show_connections {
+        English: "Show Connections"
+        Deutsch: "Verbindungen anzeigen"
     }
 }
 
