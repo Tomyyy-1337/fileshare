@@ -1173,7 +1173,7 @@ dependencies = [
 
 [[package]]
 name = "fileshare"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "bytes",
  "copypasta",
