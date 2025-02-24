@@ -148,13 +148,12 @@ impl FileManager {
     }
 
     pub fn remove(&mut self, index: usize) {
-        if let Some(file) = self.view.iter().find(|(i, _)| *i == index) {
-            if file.1.is_zip {
-                let _ = std::fs::remove_file(&file.1.path);
+        if let Some(file) = self.paths.write().unwrap().remove(&index) {
+            if file.is_zip {
+                let _ = std::fs::remove_file(&file.path);
             }
         }
 
-        self.paths.write().unwrap().remove(&index);
         self.view.retain(|(i, _)| *i != index);
     }
 

@@ -4,33 +4,33 @@ use crate::{server::webpage_service::size_string, state::{file_manager::{Compres
 use super::root_view::{H1_SIZE, H2_SIZE, P_SIZE};
 
 pub fn upload_pane(state: &State) -> iced::Element<Message> {
-    let upload_files = text!("Upload File")
+    let upload_files = text(state.language.upload_file())
         .size(H1_SIZE);
 
-    let url_select_button = button("Select File")
+    let url_select_button = button(state.language.select_files())
         .on_press(Message::SelectFilesExplorer)
         .width(iced::Length::FillPortion(1));
 
-    let url_select_button2 = button("Select Folder")
+    let url_select_button2 = button(state.language.select_folders())
         .on_press(Message::SelectFolderExplorer)
         .width(iced::Length::FillPortion(1));
 
     let url_select_button2 = tooltip(
         url_select_button2,
-        container(text("Share files from folders as individual files.").size(P_SIZE))
+        container(text(state.language.select_folders_tooltip()).size(P_SIZE))
             .padding(10)
             .width(iced::Length::Fixed(200.0))
             .style(container::rounded_box),
         tooltip::Position::Bottom
     );
 
-    let zip_select_button = button("Zip Folder")
+    let zip_select_button = button(state.language.zip_folder())
         .on_press(Message::SelectZipExplorer)
         .width(iced::Length::FillPortion(1));
 
     let zip_select_button = tooltip(
         zip_select_button,
-        container(text("Share a compressed folder containing multiple files/folders retaining their structure.").size(P_SIZE))
+        container(text(state.language.zip_folder_tooltip()).size(P_SIZE))
             .padding(10)
             .width(iced::Length::Fixed(200.0))
             .style(container::rounded_box),
@@ -54,12 +54,7 @@ pub fn upload_pane(state: &State) -> iced::Element<Message> {
     let zipping_files = state.file_manager.get_zip_compressing();
 
     if !file_path.is_empty() || !zipping_files.is_empty() {
-        let shared_files_text = match file_path.len() {
-            1 => "Shared File".to_owned(),
-            _ => format!("Shared Files [{}]", file_path.len())   
-        };
-
-        let uploaded_files = text(shared_files_text)
+        let uploaded_files = text!("{} [{}]", state.language.shared_files(), file_path.len())
             .size(H1_SIZE);
 
         let mut files_list = column![];
@@ -70,7 +65,7 @@ pub fn upload_pane(state: &State) -> iced::Element<Message> {
                 .height(iced::Length::Fixed(32.0))
                 .width(iced::Length::Fill);
 
-            let cancle_button = button("Cancel")
+            let cancle_button = button(state.language.cancel())
                 .on_press(Message::ZipCancel((*path).clone()))
                 .width(iced::Length::Shrink);
 
@@ -125,21 +120,21 @@ pub fn upload_pane(state: &State) -> iced::Element<Message> {
                 .height(iced::Length::Fixed(32.0))
                 .padding(2);
                     
-            let open_button = button("Open")
+            let open_button = button(state.language.open())
                 .on_press(Message::OpenFile(i))
                 .width(iced::Length::FillPortion(1));
 
-            let show_in_explorer_button = button("Show")
+            let show_in_explorer_button = button(state.language.show())
                 .on_press(Message::ShowInExplorer(i))
                 .width(iced::Length::FillPortion(1));
 
-            let delete_button = button("Remove")
+            let delete_button = button(state.language.delete())
                 .width(iced::Length::FillPortion(1));
 
             let delete_button: iced::Element<Message> = if state.client_manager.active_downloads() == 0 {
                 delete_button.on_press(Message::DeleteFile(i)).into()
             } else {
-                tooltip(delete_button, container(text("Cannot delete files while downloads are active.").size(P_SIZE))
+                tooltip(delete_button, container(text(state.language.delete_tooltip()).size(P_SIZE))
                     .padding(10)
                     .width(iced::Length::Fixed(200.0))
                     .style(container::rounded_box),
@@ -195,13 +190,13 @@ pub fn upload_pane(state: &State) -> iced::Element<Message> {
             .height(iced::Length::Fill)
             .style(CustomStyles::scrollable);
 
-        let delete_all_button = button("Remove All")
+        let delete_all_button = button(state.language.remove_all())
             .width(iced::Length::FillPortion(1));
 
         let delete_all_button: iced::Element<Message> = if state.client_manager.active_downloads() == 0 {
             delete_all_button.on_press(Message::DeleteAllFiles).into()
         } else {
-            tooltip(delete_all_button, container(text("Cannot delete files while downloads are active.").size(P_SIZE))
+            tooltip(delete_all_button, container(text(state.language.delete_tooltip()).size(P_SIZE))
                 .padding(10)
                 .width(iced::Length::Fixed(200.0))
                 .style(container::rounded_box),
@@ -215,9 +210,9 @@ pub fn upload_pane(state: &State) -> iced::Element<Message> {
         pane = pane.push(files_list);
         pane = pane.push(delete_all_button);
     } else {
-        pane = pane.push(text!("No file selected!")
+        pane = pane.push(text(state.language.no_file_selected())
             .size(H2_SIZE));
-        pane = pane.push(text!("Drag and drop a file inside the window or click one of the buttons below to select files to share.")
+        pane = pane.push(text(state.language.drag_and_drop())
             .size(P_SIZE));
         pane = pane.push(url_select_row);
     }

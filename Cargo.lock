@@ -1043,6 +1043,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a3d8a32ae18130a3c84dd492d4215c3d913c3b07c6b63c2eb3eb7ff1101ab7bf"
 
 [[package]]
+name = "enum_all_variants"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b46184566a86c295c49e0da901abdcc0beea38325c7f4184e3b3672cd44a5f31"
+dependencies = [
+ "quote",
+ "syn 2.0.98",
+]
+
+[[package]]
 name = "enumflags2"
 version = "0.7.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1167,6 +1177,7 @@ version = "0.2.4"
 dependencies = [
  "bytes",
  "copypasta",
+ "enum_all_variants",
  "futures",
  "iced",
  "ipconfig",

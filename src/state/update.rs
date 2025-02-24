@@ -4,7 +4,7 @@ use local_ip_address::local_ip;
 use rfd::FileDialog;
 use iced::{stream::channel, window::Event, Size, Task};
 
-use crate::{server::router::server, state::{file_manager::FileInfo, state::State}};
+use crate::{server::router::server, state::{file_manager::FileInfo, state::State}, views::language::Language};
 
 use super::file_manager::{FileManager, ZipMessage};
 
@@ -45,10 +45,16 @@ pub enum Message {
     RetryIp,
     SelectZipExplorer,
     ZipCancel(PathBuf),
+    LanguageChanged(Language),
 }
 
 pub fn update(state: &mut State, message: Message) -> Task<Message> {
     match message {
+        Message::LanguageChanged(language) => {
+            state.language = language;
+            state.backup_state();
+        },
+
         Message::ZipMessage(ZipMessage::Done{path}) => {
             state.file_manager.zip_compressing_done(&path);
             if state.server_handle.is_none() {

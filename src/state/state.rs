@@ -4,7 +4,7 @@ use iced::widget;
 use qrcode_generator::QrCodeEcc;
 use serde::{Deserialize, Serialize};
 
-use crate::{state::client_manager::ClientManager, state::file_manager::FileManager, state::theme_selector::ThemeSelector, views::root_view::CONNECTION_PANE_WIDTH};
+use crate::{state::{client_manager::ClientManager, file_manager::FileManager, theme_selector::ThemeSelector}, views::{language::Language, root_view::CONNECTION_PANE_WIDTH}};
 
 pub struct State {
     pub theme: ThemeSelector,
@@ -21,6 +21,7 @@ pub struct State {
     pub show_connections: bool,
     pub block_external_connections: Arc<AtomicBool>,
     pub show_qr_code: bool,
+    pub language: Language,
 }
 
 impl Default for State {
@@ -34,6 +35,7 @@ impl Default for State {
         let mut show_connections = true;
         let mut show_qr_code = true;
         let mut port_buffer = "8080".to_string();
+        let mut language = Language::English;
         
         if let Ok(file) = read_to_string(config_path) {
             let json = serde_json::from_str::<PersistantState>(&file);
@@ -43,6 +45,7 @@ impl Default for State {
                 port_buffer = port.to_string();
                 show_connections = data.show_connections;
                 show_qr_code = data.show_qr_code;
+                language = data.language;
             }   
         }
         
@@ -63,6 +66,7 @@ impl Default for State {
             show_connections,
             block_external_connections: Arc::new(AtomicBool::new(true)),
             show_qr_code,
+            language
         }
     }
 }
@@ -72,7 +76,8 @@ struct PersistantState {
     theme: usize,
     port: u16,
     show_connections: bool,
-    show_qr_code: bool
+    show_qr_code: bool,
+    language: Language
 }
 
 impl State {
@@ -103,7 +108,8 @@ impl State {
             theme: self.theme.get_indx(),
             port: self.port,
             show_connections: self.show_connections,
-            show_qr_code: self.show_qr_code
+            show_qr_code: self.show_qr_code,
+            language: self.language
         };
         let config_path = config_path();
         let json = serde_json::to_string(&persistant_state).unwrap();

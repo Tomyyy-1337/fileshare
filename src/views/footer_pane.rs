@@ -1,7 +1,7 @@
 use iced::widget::{self, button, container, pick_list, row, text, tooltip};
 use crate::{state::state::State, state::update::Message, views::{styles::CustomStyles, styles::color_multiply}};
 
-use super::root_view::{H2_SIZE, P_SIZE};
+use super::{language::Language, root_view::{H2_SIZE, P_SIZE}};
 
 pub fn footer_pane(state: &State) -> iced::Element<Message> {
     let settings_text = text!("Theme:")
@@ -12,7 +12,7 @@ pub fn footer_pane(state: &State) -> iced::Element<Message> {
 
     let theme_button = tooltip(
         theme_button,
-        container(text("You can change the theme of the application using the up and down arrow keys.").size(P_SIZE))
+        container(text(state.language.theme_tooltip()).size(P_SIZE))
             .padding(10)
             .width(iced::Length::Fixed(180.0))
             .style(container::rounded_box),
@@ -33,20 +33,20 @@ pub fn footer_pane(state: &State) -> iced::Element<Message> {
     let mut port_tooltip = match state.port_buffer.parse::<u16>() {
         Err(_) => {
             port_text = port_text.style(CustomStyles::textfield_background(state.theme.get().palette().danger));
-            format!("Invaid port number. Please enter a number between 0 and 65535. (Active Port: {})", state.port)
+            format!("{} {})", state.language.invalid_port(), state.port)
         },
         Ok(n) if state.port != n => {
             port_text = port_text.style(CustomStyles::textfield_background(color_multiply(state.theme.get().palette().primary, 0.8)));
-            format!("Press Enter to change the port. (Active Port: {})", state.port)
+            format!("{} {})",state.language.change_port(), state.port)
         }  
         _ => {
             port_text = port_text.style(CustomStyles::textfield_background(state.theme.get().palette().background)); 
-            "Change the port the server is running on. If you want to serve the files on the internet, make sure to open the port in your router settings.".to_owned()
+            state.language.standard_port().to_string()
         }
     };
 
     if state.client_manager.active_downloads() > 0 {
-        port_tooltip = format!("Cannot change the port while downloads are active. (Active Port: {})", state.port);
+        port_tooltip = format!("{}{})",state.language.locked_port(), state.port);
     }
 
     let port_tooltip = text(port_tooltip)
@@ -61,20 +61,15 @@ pub fn footer_pane(state: &State) -> iced::Element<Message> {
         tooltip::Position::Top
     );
 
-    let text_view = text!("Settings:")
+    let text_view = text(state.language.language())
         .size(H2_SIZE);
 
-    let connection_info = match state.show_connections {
-        true => "Hide Connections",
-        false => "Show Connections"
-    };
-    let button_connection_info = button(connection_info)
-        .on_press(Message::ToggleConnectionsView)
-        .width(iced::Length::Fixed(160.0));
+    let language_button = pick_list(Language::all_variants(), Some(state.language), Message::LanguageChanged)
+        .style(CustomStyles::pick_list);
 
     let footer = row![
         text_view,
-        button_connection_info,
+        language_button,
         settings_text,
         theme_button,
         port_title,

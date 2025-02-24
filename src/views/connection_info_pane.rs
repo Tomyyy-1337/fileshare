@@ -6,7 +6,7 @@ use crate::{server::webpage_service::size_string, state::{client_manager::Client
 use super::root_view::{CONNECTION_PANE_WIDTH, H1_SIZE, P_SIZE};
 
 pub fn connection_info_pane(state: &State) -> iced::Element<Message> {
-    let text_connections = text!("Connections")
+    let text_connections = text(state.language.connections())
         .size(H1_SIZE)
         .align_x(iced::alignment::Horizontal::Center)
         .width(iced::Length::Fill);
@@ -113,18 +113,18 @@ pub fn connection_info_pane(state: &State) -> iced::Element<Message> {
         .padding(1)
         .style(CustomStyles::container_border(state.client_manager.active_downloads() > 0));
 
-    let stats_text = text!("Stats")
+    let stats_text = text(state.language.stats())
         .size(H1_SIZE)
         .width(iced::Length::Fill)
         .align_x(iced::alignment::Horizontal::Center);
 
     let name_column = column![
-        text("Active Downloads:").size(P_SIZE).width(iced::Length::Shrink),
-        text("Active Clients:").size(P_SIZE).width(iced::Length::Shrink),
-        text("Total Clients:").size(P_SIZE).width(iced::Length::Shrink),
-        text("Total Downloads:").size(P_SIZE).width(iced::Length::Shrink),
-        text("Current Upload:").size(P_SIZE).width(iced::Length::Shrink),
-        text("Transmitted Data:").size(P_SIZE).width(iced::Length::Shrink),
+        text(state.language.active_downlaods()).size(P_SIZE).width(iced::Length::Shrink),
+        text(state.language.active_clients()).size(P_SIZE).width(iced::Length::Shrink),
+        text(state.language.total_clients()).size(P_SIZE).width(iced::Length::Shrink),
+        text(state.language.total_downloads()).size(P_SIZE).width(iced::Length::Shrink),
+        text(state.language.current_upload()).size(P_SIZE).width(iced::Length::Shrink),
+        text(state.language.transmitted_data()).size(P_SIZE).width(iced::Length::Shrink),
     ]
     .spacing(5);
 

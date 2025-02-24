@@ -16,6 +16,7 @@ mod views {
     mod download_pane;
     mod footer_pane;
     mod connection_info_pane;
+    pub mod language;
 }
 mod server {
     pub mod router;
@@ -34,7 +35,7 @@ fn main() -> iced::Result {
         .window(iced::window::Settings {
             resizable: true,
             size: (Size::new(1040.0, 660.0)),
-            min_size: Some(Size::new(890.0, 500.0)),
+            min_size: Some(Size::new(940.0, 500.0)),
             icon: Some(iced::window::icon::from_file("./assets/icon.ico").unwrap()),
             ..iced::window::Settings::default()
         })

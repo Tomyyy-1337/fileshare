@@ -7,7 +7,7 @@ pub fn download_pane(state: &State) -> iced::Element<Message> {
     let image = widget::image(&state.qr_code)
         .width(iced::Length::Fill);
 
-    let url_text = text!("Download")
+    let url_text = text(state.language.download())
         .size(H1_SIZE);
 
     let url_string =  state.create_url_string();
@@ -15,11 +15,11 @@ pub fn download_pane(state: &State) -> iced::Element<Message> {
         .size(P_SIZE)
         .on_input(|_| Message::None);
 
-    let copy_button = button("Copy URL")
+    let copy_button = button(state.language.copy_url())
         .on_press(Message::CopyUrl)
         .width(iced::Length::FillPortion(1));
 
-    let browser_button = button("Open")
+    let browser_button = button(state.language.open_in_browser())
         .on_press(Message::OpenInBrowser)
         .width(iced::Length::FillPortion(1));
 
@@ -30,16 +30,16 @@ pub fn download_pane(state: &State) -> iced::Element<Message> {
     let text_mode = text(text_mode)
         .size(H2_SIZE);
 
-    let text_connection_info = text("Connection Info")
+    let text_connection_info = text(state.language.connection_info())
         .size(H2_SIZE);
 
-    let block_external_connections = checkbox("Block External Connections", state.block_external_connections.load(std::sync::atomic::Ordering::Relaxed))
+    let block_external_connections = checkbox(state.language.block_external_connections(), state.block_external_connections.load(std::sync::atomic::Ordering::Relaxed))
         .on_toggle(Message::BlockExternalConnections)
         .size(16)
         .text_size(16)
         .width(iced::Length::Fill);
 
-    let block_external_connections_tooltip = text("Block external connections to the server. Check this box if you want only devices on the local network to access the files.")
+    let block_external_connections_tooltip = text(state.language.block_external_connections_tooltip())
         .size(P_SIZE);
 
     let block_external_connections = tooltip( 
@@ -63,7 +63,7 @@ pub fn download_pane(state: &State) -> iced::Element<Message> {
     ]
     .spacing(5);
 
-    let show_qr_code = checkbox("Show QR Code", state.show_qr_code)
+    let show_qr_code = checkbox(state.language.show_qr_code(), state.show_qr_code)
         .on_toggle(|show| Message::ShowQrCode(show))
         .size(16)
         .text_size(16)
