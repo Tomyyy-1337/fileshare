@@ -13,13 +13,15 @@ Upload | Downlaod
 * Zip folders before sharing (optional)
 * Support for multiple themes and languages
 
-### Run with
+## Build
+
+### Run in release mode
 ```
 cargo run --release
 ```
 
-### Optimized Build
+### Optimized Build (long compile time)
 ```
-cargo run --profile optimized --features appdata
+cargo build --profile optimized --features appdata
 ```
 The feature *appdata* configures the programm to write config files in the appdata folder. 
