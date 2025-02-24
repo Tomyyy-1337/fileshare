@@ -18,6 +18,7 @@ pub fn footer_pane(state: &State) -> iced::Element<Message> {
             .style(container::rounded_box),
         tooltip::Position::Right
     );
+
     
     let port_title = text!("Port:")
         .size(H2_SIZE);
@@ -56,13 +57,15 @@ pub fn footer_pane(state: &State) -> iced::Element<Message> {
         port_text,
         container(port_tooltip)
             .padding(10)
-            .width(iced::Length::Fixed(300.0))
+            .width(iced::Length::Fixed(250.0))
             .style(container::rounded_box),
         tooltip::Position::Top
     );
 
     let text_view = text(state.language.language())
-        .size(H2_SIZE);
+        .size(H2_SIZE)
+        .width(iced::Length::Fixed(100.0))
+        .align_x(iced::alignment::Horizontal::Right);
 
     let language_button = pick_list(Language::all_variants(), Some(state.language), Message::LanguageChanged)
         .style(CustomStyles::pick_list);
