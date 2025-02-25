@@ -1,7 +1,6 @@
 use enum_all_variants::AllVariants;
 use serde::{Deserialize, Serialize};
-
-use crate::generate_language_functions;
+use language_atlas::generate_language_functions;
 
 #[derive(Debug, AllVariants, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum Language {

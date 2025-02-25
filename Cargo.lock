@@ -1181,6 +1181,7 @@ dependencies = [
  "futures",
  "iced",
  "ipconfig",
+ "language_atlas",
  "local-ip-address",
  "memmap2",
  "open",
@@ -2437,6 +2438,12 @@ dependencies = [
  "arrayvec",
  "smallvec",
 ]
+
+[[package]]
+name = "language_atlas"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "453bf6177fbcd89b9685a8f51b47520ad40b26c06cb25898dbaa350f4eac6b3f"
 
 [[package]]
 name = "lazy-bytes-cast"
