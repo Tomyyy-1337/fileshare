@@ -17,7 +17,6 @@ mod views {
     mod footer_pane;
     mod connection_info_pane;
     pub mod language;
-    mod language_macro;
 }
 mod server {
     pub mod router;
