@@ -54,7 +54,7 @@ pub fn upload_pane(state: &State) -> iced::Element<Message> {
     let zipping_files = state.file_manager.get_zip_compressing();
 
     if !file_path.is_empty() || !zipping_files.is_empty() {
-        let uploaded_files = text!("{} [{}]", state.language.shared_files(), file_path.len())
+        let uploaded_files = text(state.language.shared_files(file_path.len()))
             .size(H1_SIZE);
 
         let mut files_list = column![];

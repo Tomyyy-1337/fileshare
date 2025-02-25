@@ -71,22 +71,22 @@ pub fn connection_info_pane(state: &State) -> iced::Element<Message> {
             .style(CustomStyles::darker_background(factor));
 
         let last_connection_text = match client_info.state {
-            ClientState::Downloading => format!("Downloading at up to {}/s\nProgress: ({}/{})", size_string(client_info.max_speed), size_string(client_info.current_download_progress), size_string(client_info.current_downloads_size)),
+            ClientState::Downloading => state.language.downloading_tooltip(size_string(client_info.max_speed), size_string(client_info.current_download_progress), size_string(client_info.current_downloads_size)),
             ClientState::Connected => {
                 let last = if client_info.download_count > 0 {
-                    format!("Last download {} ago \nat up to {}/s ", format_time(client_info.last_download.elapsed()), size_string(client_info.max_speed))
+                    state.language.last_download(format_time(client_info.last_download.elapsed()), size_string(client_info.max_speed))
                 } else {
                     "".to_owned()
                 };
-                format!("Connected.\n{}", last)
+                format!("{}\n{}",state.language.connected(), last)
             },
             ClientState::Disconnected => {
                 let last = if client_info.download_count > 0 {
-                    format!("Last download {} ago \nat up to {}/s ", format_time(client_info.last_download.elapsed()), size_string(client_info.max_speed))
+                    state.language.last_download(format_time(client_info.last_download.elapsed()), size_string(client_info.max_speed))
                 } else {
                     "".to_owned()
                 };
-                format!("Last seen {} ago\n{}", format_time(client_info.last_connection.elapsed()), last)
+                format!("{}\n{}", state.language.last_seen(format_time(client_info.last_connection.elapsed())), last)
             },
         };
 

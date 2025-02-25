@@ -34,11 +34,11 @@ pub fn footer_pane(state: &State) -> iced::Element<Message> {
     let mut port_tooltip = match state.port_buffer.parse::<u16>() {
         Err(_) => {
             port_text = port_text.style(CustomStyles::textfield_background(state.theme.get().palette().danger));
-            format!("{} {})", state.language.invalid_port(), state.port)
+            state.language.invalid_port(state.port)
         },
         Ok(n) if state.port != n => {
             port_text = port_text.style(CustomStyles::textfield_background(color_multiply(state.theme.get().palette().primary, 0.8)));
-            format!("{} {})",state.language.change_port(), state.port)
+            state.language.change_port(state.port)
         }  
         _ => {
             port_text = port_text.style(CustomStyles::textfield_background(state.theme.get().palette().background)); 
@@ -47,7 +47,7 @@ pub fn footer_pane(state: &State) -> iced::Element<Message> {
     };
 
     if state.client_manager.active_downloads() > 0 {
-        port_tooltip = format!("{}{})",state.language.locked_port(), state.port);
+        port_tooltip = state.language.locked_port(state.port);
     }
 
     let port_tooltip = text(port_tooltip)

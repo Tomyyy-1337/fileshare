@@ -1,6 +1,8 @@
 use enum_all_variants::AllVariants;
 use serde::{Deserialize, Serialize};
 
+
+
 #[derive(Debug, AllVariants, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum Language {
     English,
@@ -8,28 +10,57 @@ pub enum Language {
 }
 
 macro_rules! generate_language_functions {
-    ( $( $field:ident { $($lang:ident: $value:expr$(,)?)* })* ) => {
-        // #[allow(dead_code)] // Dont show warnings for unused text fields
+    (
+        $(
+            $field:ident $( ( $($args:ident),+ ) )? { 
+                $($lang:ident: $value:expr $(,)? )*
+            }
+        )*
+    ) => {
+        #[allow(dead_code)]
         #[allow(unreachable_patterns)]
+        #[allow(non_camel_case_types)]
         impl Language {
             $(
-                generate_language_functions!(@field_impl $field { $($lang: $value,)* } );
+                generate_language_functions!(@field_impl $field $( ( $($args),* ) )? { $($lang: $value,)* } );
             )*
         }
     };
-    
-    (@field_impl $field:ident {}) => {
+
+    (@field_impl $field:ident { } ) => {
         #[deprecated(note = "No language string provided for this field. Defaulting to 'ToDo!'")]
         pub fn $field(&self) -> &'static str {
             "ToDo!"
         }
     };
-    
-    (@field_impl $field:ident { $first_lang:ident: $first_value:expr, $($lang:ident: $value:expr,)* }) => {
+
+    (@field_impl $field:ident { $first_lang:ident: $first_value:expr, $($lang:ident: $value:expr,)* } ) => {
         pub fn $field(&self) -> &'static str {
             match self {
-                $(Language::$lang => $value,)*  
-                Language::$first_lang | _ => $first_value, 
+                $( Language::$lang => $value, )*
+                Language::$first_lang | _ => $first_value,
+            }
+        }
+    };
+
+    (@field_impl $field:ident ( $($args:ident),* ) { } ) => {
+        #[deprecated(note = "No language string provided for this field. Defaulting to 'ToDo!'")]
+        pub fn $field<$( $args: std::fmt::Display, )*>(
+            &self, 
+            $( $args: $args, )*
+        ) -> String {
+            String::from("ToDo!")
+        }
+    };
+
+    (@field_impl $field:ident ( $($args:ident),* ) { $first_lang:ident: $first_value:expr, $($lang:ident: $value:expr,)* } ) => {
+        pub fn $field<$( $args: std::fmt::Display, )*>(
+            &self,
+            $( $args: $args, )*
+        ) -> String {
+            match self {
+                $( Language::$lang => format!($value), )*
+                Language::$first_lang | _ => format!($first_value),
             }
         }
     };
@@ -100,9 +131,9 @@ generate_language_functions! {
         English: "Share a compressed folder containing multiple files/folders retaining their structure."
         Deutsch: "Komprimiert die Dateien in einem Ordner in eine zip datei und teilt diese."
     }
-    shared_files {
-        English: "Shared Files"
-        Deutsch: "Geteilte Dateien"
+    shared_files(n) {
+        English: "Shared Files [{n}]"
+        Deutsch: "Geteilte Dateien [{n}]"
     }
     cancel {
         English: "Cancel"
@@ -132,21 +163,21 @@ generate_language_functions! {
         English: "You can change the theme of the application using the up and down arrow keys."
         Deutsch: "Du kannst das Farbschema der Anwendung mit den Pfeiltasten nach oben und unten ändern."
     }
-    invalid_port {
-        English: "Invaid port number. Please enter a number between 0 and 65535. (Active Port:"
-        Deutsch: "Ungültige Portnummer. Bitte geben Sie eine Nummer zwischen 0 und 65535 ein. (Aktiver Port:"
+    invalid_port(port) {
+        English: "Invaid port number. Please enter a number between 0 and 65535. (Active Port: {port})"
+        Deutsch: "Ungültige Portnummer. Bitte geben Sie eine Nummer zwischen 0 und 65535 ein. (Aktiver Port: {port})"
     }
-    change_port {
-        English: "Press Enter to change the port. (Active Port:"
-        Deutsch: "Drücke die Eingabetaste(Enter), um den Port zu ändern. (Aktiver Port:"
+    change_port(port) {
+        English: "Press Enter to change the port. (Active Port: {port})"
+        Deutsch: "Drücke die Eingabetaste(Enter), um den Port zu ändern. (Aktiver Port: {port})"
     }
     standard_port {
         English: "You can change the port the server is running on. If you want to serve the files on the internet, make sure to open the port in your router settings."
         Deutsch: "Hier kannst du den Port aud em der http server läuft änder. Wenn du die Dateien im Internet freigeben möchtest, stelle sicher, dass der Port in den Router-Einstellungen freigegeben ist."
     }
-    locked_port {
-        English: "Cannot change the port while downloads are active. (Active Port:"
-        Deutsch: "Der Port kann nicht geändert werden, solange Downloads aktiv sind. (Aktiver Port:"
+    locked_port(port) {
+        English: "Cannot change the port while downloads are active. (Active Port: {port})"
+        Deutsch: "Der Port kann nicht geändert werden, solange Downloads aktiv sind. (Aktiver Port: {port})"
     }
     language {
         English: "Language:"
@@ -182,6 +213,22 @@ generate_language_functions! {
     show_connections {
         English: "Show Connections"
         Deutsch: "Verbindungen anzeigen"
+    }
+    downloading_tooltip(speed, progress, size) {
+        English: "Downloading at up to {speed}/s\nProgress: ({progress}/{size})"
+        Deutsch: "Lädt herunter mit bis zu {speed}/s.\n {progress} von {size} heruntergeladen."
+    }
+    last_download(duration, speed) {
+        English: "Last download {duration} ago \nat up to {speed}/s "
+        Deutsch: "Letzter Download vor {duration} \nmit bis zu {speed}/s "
+    }
+    connected {
+        English: "Connected."
+        Deutsch: "Verbunden."
+    }
+    last_seen(duration) {
+        English: "Last seen {duration} ago."
+        Deutsch: "Zuletzt gesehen vor {duration}."
     }
 }
 
