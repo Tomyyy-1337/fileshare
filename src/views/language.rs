@@ -10,6 +10,7 @@ pub enum Language {
 }
 
 generate_language_functions! {
+    LanguageEnum: Language
     connections { 
         English: "Connections"
         Deutsch: "Verbindungen"
