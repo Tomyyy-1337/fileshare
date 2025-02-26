@@ -116,7 +116,7 @@ generate_language_functions! {
     }
     standard_port {
         English: "You can change the port the server is running on. If you want to serve the files on the internet, make sure to open the port in your router settings."
-        Deutsch: "Hier kannst du den Port aud em der http server läuft änder. Wenn du die Dateien im Internet freigeben möchtest, stelle sicher, dass der Port in den Router-Einstellungen freigegeben ist."
+        Deutsch: "Hier kannst du den Port auf dem der http server läuft änder. Wenn du die Dateien im Internet freigeben möchtest, stelle sicher, dass der Port in den Router-Einstellungen freigegeben ist."
     }
     locked_port(port) {
         English: "Cannot change the port while downloads are active. (Active Port: {port})"
