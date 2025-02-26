@@ -4,25 +4,23 @@ version = "0.2.6"
 edition = "2024"
 
 [dependencies]
-ipconfig = "0.3.2"
 local-ip-address = "0.6.3"
 qrcode-generator = "5.0.0"
 warp = { version = "0.3.7", default-features = false, features = [] }
 copypasta = "0.10.1"
 webbrowser = "1.0.3"
 rfd = "0.15.2"
-memmap2 = "0.9.5"
 tokio = { version = "1.43.0", features = [] }
 tokio-util = "0.7.13"
 futures = "0.3.31"
 tera = "1.10.0"
 serde = { version = "1.0.218", features = ["derive"] }
 serde_json = "1.0.139"
-public-ip-address = { version = "0.3", features = ["blocking"] }
+public-ip-address = { version = "0.3.2", features = ["blocking"] }
 bytes = "1.10.0"
 open = "5.3.2"
 walkdir = "2.5.0"
-zip = { version = "2.2.2", default-features = false, features = ["deflate"] }
+zip = { version = "2.2.3", default-features = false, features = ["deflate"] }
 enum_all_variants = "0.2.0"
 language_atlas = "0.1.0"
 
