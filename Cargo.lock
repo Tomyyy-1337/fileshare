@@ -2427,9 +2427,9 @@ dependencies = [
 
 [[package]]
 name = "language_atlas"
-version = "0.1.0"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "453bf6177fbcd89b9685a8f51b47520ad40b26c06cb25898dbaa350f4eac6b3f"
+checksum = "5b235077a0fe946699e98fd2693273d6154a4af77feef8ba53364fc690c57337"
 
 [[package]]
 name = "lazy-bytes-cast"
