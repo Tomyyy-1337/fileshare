@@ -2,8 +2,8 @@ use std::{collections::HashMap, path::{Path, PathBuf}, sync::{Arc, RwLock}};
 use std::{fs::File, io::{Read, Write}};
 
 use futures::SinkExt;
+use ignore::WalkBuilder;
 use tokio::task::{self, yield_now};
-use walkdir::WalkDir;
 use zip::write::SimpleFileOptions;
 use iced::task::Handle;
 
@@ -176,10 +176,6 @@ impl FileManager {
         let _ = std::fs::create_dir_all(dst_path.parent().unwrap());
         let file = File::create(&dst_path).unwrap();
 
-        let walkdir = WalkDir::new(&path);
-        let it = walkdir.into_iter();
-        let it = &mut it.filter_map(|e| e.ok());
-
         let mut zip = zip::ZipWriter::new(file);
         let options = SimpleFileOptions::default()
             .compression_method(zip::CompressionMethod::DEFLATE)
@@ -189,7 +185,7 @@ impl FileManager {
 
         let prefix = Path::new(&path);
         let mut buffer = Vec::new();
-        let it: Vec<_> = it.collect();
+        let it: Vec<_> = WalkBuilder::new(&path).hidden(true).build().flatten().collect();
         let number_of_files = it.len();
         for entry in it {
             let path = entry.path();
