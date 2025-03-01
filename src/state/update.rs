@@ -47,10 +47,20 @@ pub enum Message {
     SelectZipExplorer,
     ZipCancel(PathBuf),
     LanguageChanged(Language),
+    IgnoreHidden(bool),
+    UseGitignore(bool),
 }
 
 pub fn update(state: &mut State, message: Message) -> Task<Message> {
     match message {
+        Message::IgnoreHidden(ignore) => {
+            state.ignore_hidden = ignore;
+        },
+
+        Message::UseGitignore(use_gitignore) => {
+            state.use_gitignore = use_gitignore;
+        },
+
         Message::LanguageChanged(language) => {
             state.language = language;
             state.backup_state();
@@ -86,11 +96,13 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
                 }
 
                 let path_clone = path.clone();
+                let use_gitignore = state.use_gitignore;
+                let ignore_hidden = state.ignore_hidden;
                 let stream = channel(100, move |tx: futures::channel::mpsc::Sender<_>| {
                     let tx = tx.clone();
                     let path = path.clone();
                     async move {
-                        FileManager::start_zip_task(path, tx).await;
+                        FileManager::start_zip_task(path, tx, use_gitignore, ignore_hidden).await;
                     }
                 });
             
@@ -310,28 +322,6 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
     Task::none()
 }
 
-fn find_files_recursive(path: &PathBuf, files: &mut Vec<PathBuf>) {
-    if path.is_dir() {
-        for entry in path.read_dir().unwrap() {
-            let entry = entry.unwrap();
-            let path = entry.path();
-            if path.is_dir() {
-                find_files_recursive(&path, files);
-            } else {
-                files.push(path);
-            }
-        }
-    } else {
-        files.push(path.clone());
-    }
-}
-
-fn find_files(path: &PathBuf) -> Vec<PathBuf> {
-    let mut files = Vec::new();
-    find_files_recursive(path, &mut files);
-    files
-}
-
 fn add_files_from_path_list(state: &mut State, paths: Vec<PathBuf>) {
     for path in paths {
         add_files_from_path(state, path, false) 
@@ -339,10 +329,21 @@ fn add_files_from_path_list(state: &mut State, paths: Vec<PathBuf>) {
 }
 
 fn add_files_from_path(state: &mut State, path: PathBuf, is_zip: bool) {
-    for result in WalkBuilder::new(path).hidden(true).build() {
+    for result in WalkBuilder::new(path)
+        .hidden(state.ignore_hidden)
+        .git_ignore(state.use_gitignore)
+        .git_exclude(state.use_gitignore)
+        .git_global(state.use_gitignore)
+        .ignore(state.use_gitignore)
+        .build() 
+    {
         match result {
             Ok(entry) => {
-                state.file_manager.push(entry.into_path(), is_zip);
+                let path = entry.into_path();
+                if path.is_dir() {
+                    continue;
+                } 
+                state.file_manager.push(path, is_zip);
             },
             Err(_) => {}
         }

@@ -171,7 +171,7 @@ impl FileManager {
         self.view.clear();
     }
 
-    pub async fn zip_task(path: PathBuf, mut tx: futures::channel::mpsc::Sender<ZipMessage>) {
+    pub async fn zip_task(path: PathBuf, mut tx: futures::channel::mpsc::Sender<ZipMessage>, use_gitignore: bool, ignore_hidden: bool) {
         let dst_path = Self::path_to_zip(&path);
         let _ = std::fs::create_dir_all(dst_path.parent().unwrap());
         let file = File::create(&dst_path).unwrap();
@@ -185,7 +185,15 @@ impl FileManager {
 
         let prefix = Path::new(&path);
         let mut buffer = Vec::new();
-        let it: Vec<_> = WalkBuilder::new(&path).hidden(true).build().flatten().collect();
+        let it: Vec<_> = WalkBuilder::new(&path)
+            .hidden(ignore_hidden)
+            .git_ignore(use_gitignore)
+            .git_exclude(use_gitignore)
+            .git_global(use_gitignore)
+            .ignore(use_gitignore)
+            .build()
+            .flatten()
+            .collect();
         let number_of_files = it.len();
         for entry in it {
             let path = entry.path();
@@ -212,9 +220,9 @@ impl FileManager {
         let _ = tx.send(ZipMessage::Done{path: prefix.to_path_buf()}).await;
     }
 
-    pub async fn start_zip_task(path: PathBuf, tx: futures::channel::mpsc::Sender<ZipMessage>) {
+    pub async fn start_zip_task(path: PathBuf, tx: futures::channel::mpsc::Sender<ZipMessage>, use_gitignore: bool, ignore_hidden: bool) {
         let handle = task::spawn(async move {
-            Self::zip_task(path, tx).await;
+            Self::zip_task(path, tx, use_gitignore, ignore_hidden).await;
         });
 
         let _ = handle.await;

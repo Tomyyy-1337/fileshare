@@ -1,4 +1,4 @@
-use iced::{alignment, widget::{self, button, column, container, horizontal_rule, hover, row, text, tooltip, Space}};
+use iced::{alignment, widget::{self, button, checkbox, column, container, horizontal_rule, hover, row, text, tooltip, Space}};
 use crate::{server::webpage_service::size_string, state::{file_manager::{CompressingZip, FileInfo}, state::State, update::Message}, views::styles::CustomStyles};
 
 use super::root_view::{H1_SIZE, H2_SIZE, P_SIZE};
@@ -27,6 +27,22 @@ pub fn upload_pane(state: &State) -> iced::Element<Message> {
     let zip_select_button = button(state.language.zip_folder())
         .on_press(Message::SelectZipExplorer)
         .width(iced::Length::FillPortion(1));
+
+    let ignore_hidden_checkbox = checkbox(state.language.ignore_hidden(), state.ignore_hidden)
+        .on_toggle(Message::IgnoreHidden)
+        .width(iced::Length::FillPortion(1));
+    
+    let use_gitignore_checkbox = checkbox(state.language.use_gitignore(), state.use_gitignore)
+        .on_toggle(Message::UseGitignore)
+        .width(iced::Length::FillPortion(1));
+
+    let checkbox_row = row![ignore_hidden_checkbox, use_gitignore_checkbox]
+        .spacing(5)
+        .width(iced::Length::Fill);
+
+    let checkbox_row = container(checkbox_row)
+        .style(CustomStyles::darker_background(0.6))
+        .padding(10);
 
     let zip_select_button = tooltip(
         zip_select_button,
@@ -205,6 +221,7 @@ pub fn upload_pane(state: &State) -> iced::Element<Message> {
         };
         
         pane = pane.push(url_select_row);
+        pane = pane.push(checkbox_row);
         pane = pane.push(uploaded_files);
         pane = pane.push(horizontal_rule(5).style(CustomStyles::horizontal_rule));
         pane = pane.push(files_list);
@@ -215,6 +232,7 @@ pub fn upload_pane(state: &State) -> iced::Element<Message> {
         pane = pane.push(text(state.language.drag_and_drop())
             .size(P_SIZE));
         pane = pane.push(url_select_row);
+        pane = pane.push(checkbox_row);
     }
 
     let upload_pane = container(pane)

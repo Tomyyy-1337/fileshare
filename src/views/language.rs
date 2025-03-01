@@ -173,6 +173,14 @@ generate_language_functions! {
         English: "Last seen {duration} ago."
         Deutsch: "Zuletzt gesehen vor {duration}."
     }
+    ignore_hidden {
+        English: "Ignore Hidden Files"
+        Deutsch: "Versteckte Dateien ignorieren"
+    }
+    use_gitignore {
+        English: "Use .gitignore"
+        Deutsch: "Benutze .gitignore"
+    }
 }
 
 impl std::fmt::Display for Language {

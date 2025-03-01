@@ -22,6 +22,8 @@ pub struct State {
     pub block_external_connections: Arc<AtomicBool>,
     pub show_qr_code: bool,
     pub language: Language,
+    pub ignore_hidden: bool,
+    pub use_gitignore: bool,
 }
 
 impl Default for State {
@@ -66,7 +68,9 @@ impl Default for State {
             show_connections,
             block_external_connections: Arc::new(AtomicBool::new(true)),
             show_qr_code,
-            language
+            language,
+            ignore_hidden: true,
+            use_gitignore: true,
         }
     }
 }
