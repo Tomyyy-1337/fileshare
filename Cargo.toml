@@ -23,6 +23,7 @@ walkdir = "2.5.0"
 zip = { version = "2.2.3", default-features = false, features = ["deflate"] }
 enum_all_variants = "0.2.0"
 language_atlas = "0.1.2"
+ignore = "0.4.23"
 
 [dependencies.iced]
 version = "0.13.1"

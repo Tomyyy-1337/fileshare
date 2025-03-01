@@ -1,5 +1,6 @@
 use std::{net::IpAddr, path::PathBuf, process::Command, thread::sleep};
 use copypasta::{ClipboardContext, ClipboardProvider};
+use ignore::WalkBuilder;
 use local_ip_address::local_ip;
 use rfd::FileDialog;
 use iced::{stream::channel, window::Event, Size, Task};
@@ -338,11 +339,19 @@ fn add_files_from_path_list(state: &mut State, paths: Vec<PathBuf>) {
 }
 
 fn add_files_from_path(state: &mut State, path: PathBuf, is_zip: bool) {
-    let paths = find_files(&path);
+    for result in WalkBuilder::new(path).hidden(true).build() {
+        match result {
+            Ok(entry) => {
+                state.file_manager.push(entry.into_path(), is_zip);
+            },
+            Err(_) => {}
+        }
+    }
+    // let paths = find_files(&path);
 
-    for file in paths {
-        state.file_manager.push(file.clone(), is_zip);
-    } 
+    // for file in paths {
+    //     state.file_manager.push(file.clone(), is_zip);
+    // } 
 }
 
 fn start_server(state: &mut State) -> Task<Message> {
