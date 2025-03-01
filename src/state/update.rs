@@ -210,7 +210,10 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
                 .add_filter("Any", &["*"])
                 .pick_folders();
             if let Some(paths) = paths {
-                return add_files_from_path_list(state, paths);
+                add_files_from_path_list(state, paths);
+                if state.server_handle.is_none() {
+                    return start_server(state);
+                }
             }
         },
         
@@ -239,15 +242,19 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
                 .add_filter("Any", &["*"])
                 .pick_files();
             if let Some(paths) = paths {
-                return add_files_from_path_list(state, paths);
+                add_files_from_path_list(state, paths);
+                if state.server_handle.is_none() {
+                    return start_server(state);
+                }
             } 
         },
         
         Message::WindowEvent(Event::Resized(Size { width, height })) => state.size = (width as f32, height as f32),
 
         Message::WindowEvent(Event::FileDropped(path)) => {
-            if let Some(task) = add_files_from_path(state, path, false) {
-                return task;
+            add_files_from_path(state, path, false);
+            if state.server_handle.is_none() {
+                return start_server(state);
             }
         },
 
@@ -324,29 +331,18 @@ fn find_files(path: &PathBuf) -> Vec<PathBuf> {
     files
 }
 
-fn add_files_from_path_list(state: &mut State, paths: Vec<PathBuf>) -> Task<Message> {
-    let mut return_tasks = Task::none();
+fn add_files_from_path_list(state: &mut State, paths: Vec<PathBuf>) {
     for path in paths {
-        if let Some(task) = add_files_from_path(state, path, false) {
-            return_tasks = task
-        }
+        add_files_from_path(state, path, false) 
     }
-    return_tasks
 }
 
-fn add_files_from_path(state: &mut State, path: PathBuf, is_zip: bool) -> Option<Task<Message>> {
+fn add_files_from_path(state: &mut State, path: PathBuf, is_zip: bool) {
     let paths = find_files(&path);
 
     for file in paths {
-        if state.file_manager.get_view().iter().find(| (_, FileInfo { path, .. })| path == &file).is_some() {
-            continue;
-        }
         state.file_manager.push(file.clone(), is_zip);
     } 
-    if state.server_handle.is_none() {
-        return Some(start_server(state));
-    }
-    None
 }
 
 fn start_server(state: &mut State) -> Task<Message> {

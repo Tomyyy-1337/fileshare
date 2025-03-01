@@ -135,6 +135,9 @@ impl FileManager {
     }
 
     pub fn push(&mut self, path: PathBuf, is_zip: bool) {
+        if self.view.iter().any(|(_, file)| file.path == path) {
+            return;
+        }
         let size = path.metadata().unwrap().len() as usize;
         let file = FileInfo {
             path,
@@ -193,9 +196,9 @@ impl FileManager {
             let _ = tx.send(ZipMessage::Progress{path: prefix.to_path_buf()}).await;
             let name = path.strip_prefix(prefix).unwrap();
             let path_as_string = name
-            .to_str()
-            .map(str::to_owned)
-            .unwrap();
+                .to_str()
+                .map(str::to_owned)
+                .unwrap();
         
             if path.is_file() {
                 zip.start_file(path_as_string, options).unwrap();
