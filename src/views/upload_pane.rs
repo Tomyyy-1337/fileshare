@@ -29,11 +29,17 @@ pub fn upload_pane(state: &State) -> iced::Element<Message> {
         .width(iced::Length::FillPortion(1));
 
     let ignore_hidden_checkbox = checkbox(state.language.ignore_hidden(), state.ignore_hidden)
-        .on_toggle(Message::IgnoreHidden)
-        .width(iced::Length::FillPortion(1));
+        .on_toggle(Message::IgnoreHidden);
     
+    let ignore_hidden_checkbox = container(ignore_hidden_checkbox)
+        .align_x(iced::alignment::Horizontal::Center)
+        .width(iced::Length::FillPortion(1));
+
     let use_gitignore_checkbox = checkbox(state.language.use_gitignore(), state.use_gitignore)
-        .on_toggle(Message::UseGitignore)
+        .on_toggle(Message::UseGitignore);
+
+    let use_gitignore_checkbox = container(use_gitignore_checkbox)
+        .align_x(iced::alignment::Horizontal::Center)
         .width(iced::Length::FillPortion(1));
 
     let checkbox_row = row![ignore_hidden_checkbox, use_gitignore_checkbox]

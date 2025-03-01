@@ -174,12 +174,20 @@ generate_language_functions! {
         Deutsch: "Zuletzt gesehen vor {duration}."
     }
     ignore_hidden {
-        English: "Ignore Hidden Files"
+        English: "Ignore hidden files"
         Deutsch: "Versteckte Dateien ignorieren"
     }
     use_gitignore {
         English: "Use .gitignore"
         Deutsch: "Benutze .gitignore"
+    }
+    use_gitignore_tooltip {
+        English: "Use the .gitignore files in the folders to exclude files from being shared."
+        Deutsch: "Benutze die .gitignore Datei im Ordner um Dateien auszuschließen."
+    }
+    ignore_hidden_tooltip {
+        English: "Exclude hidden files and folders from being shared."
+        Deutsch: "Verhindere, dass versteckte Dateien und Ordner geteilt werden."
     }
 }
 
