@@ -51,7 +51,7 @@ generate_language_functions! {
         Deutsch: "Keine Datei ausgewählt!"
     }
     drag_and_drop {
-        English: "Drag and drop a file inside the window or click one of the buttons below to select files to share."
+        English: "Drag and drop a file inside the window or click one of the buttons above to select files to share."
         Deutsch: "Ziehe eine Datei in das Fenster oder klicke auf einen der Knöpfe um Dateien zum Teilen auszuwählen."
     }
     select_files {
@@ -180,14 +180,6 @@ generate_language_functions! {
     use_gitignore {
         English: "Use .gitignore"
         Deutsch: "Benutze .gitignore"
-    }
-    use_gitignore_tooltip {
-        English: "Use the .gitignore files in the folders to exclude files from being shared."
-        Deutsch: "Benutze die .gitignore Datei im Ordner um Dateien auszuschließen."
-    }
-    ignore_hidden_tooltip {
-        English: "Exclude hidden files and folders from being shared."
-        Deutsch: "Verhindere, dass versteckte Dateien und Ordner geteilt werden."
     }
 }
 

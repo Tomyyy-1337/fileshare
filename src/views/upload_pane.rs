@@ -45,8 +45,7 @@ pub fn upload_pane(state: &State) -> iced::Element<Message> {
     let checkbox_row = row![ignore_hidden_checkbox, use_gitignore_checkbox]
         .spacing(5)
         .width(iced::Length::Fill)
-        .height(iced::Length::Fixed(32.0))
-        .align_y(iced::alignment::Vertical::Bottom);
+        .align_y(iced::alignment::Vertical::Center);
 
     let zip_select_button = tooltip(
         zip_select_button,
@@ -64,11 +63,11 @@ pub fn upload_pane(state: &State) -> iced::Element<Message> {
     let file_selection_collumn = column![
         url_select_row,
         checkbox_row,
-    ];
+    ].padding(10)
+    .spacing(10);
 
     let file_selection_collumn = container(file_selection_collumn)
-        .style(CustomStyles::darker_background(0.6))
-        .padding(10);
+        .style(CustomStyles::darker_background(0.6));
 
     let file_selection_collumn = container(file_selection_collumn)
         .style(CustomStyles::container_border(false))
@@ -77,6 +76,7 @@ pub fn upload_pane(state: &State) -> iced::Element<Message> {
     let mut pane = column![
         upload_files,
         horizontal_rule(5).style(CustomStyles::horizontal_rule),
+        file_selection_collumn
     ]
     .padding(5)
     .spacing(10)
@@ -90,7 +90,7 @@ pub fn upload_pane(state: &State) -> iced::Element<Message> {
         let uploaded_files = text(state.language.shared_files(file_path.len()))
             .size(H1_SIZE);
 
-        let mut files_list = column![];
+        let mut files_list = column![].spacing(1);
         for (color, (path, CompressingZip { num_files, progress, ..})) in zipping_files.iter().enumerate() {
             let text_file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
             let text_file_name = text!("{}.zip", text_file_name)
@@ -241,15 +241,14 @@ pub fn upload_pane(state: &State) -> iced::Element<Message> {
             ).into()
         };
         
-        pane = pane.push(file_selection_collumn);
         pane = pane.push(uploaded_files);
         pane = pane.push(horizontal_rule(5).style(CustomStyles::horizontal_rule));
         pane = pane.push(files_list);
         pane = pane.push(delete_all_button);
     } else {
+        pane = pane.push(horizontal_rule(5).style(CustomStyles::horizontal_rule));
         pane = pane.push(text(state.language.no_file_selected()).size(H2_SIZE));
         pane = pane.push(text(state.language.drag_and_drop()).size(P_SIZE));
-        pane = pane.push(file_selection_collumn);
     }
 
     let upload_pane = container(pane)
