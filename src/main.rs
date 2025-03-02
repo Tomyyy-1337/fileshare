@@ -34,8 +34,8 @@ fn main() -> iced::Result {
         .subscription(subscription)
         .window(iced::window::Settings {
             resizable: true,
-            size: (Size::new(1040.0, 660.0)),
-            min_size: Some(Size::new(940.0, 500.0)),
+            size: (Size::new(1000.0, 700.0)),
+            min_size: Some(Size::new(960.0, 500.0)),
             icon: Some(iced::window::icon::from_file("./assets/icon.ico").unwrap()),
             ..iced::window::Settings::default()
         })
